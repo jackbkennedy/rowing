@@ -5,7 +5,10 @@ import * as path from 'path';
 import * as fs from 'fs';
 import prisma from './database';
 
-const DEFAULT_URL = 'https://yb.tl/Simple/wtrsvghjkl23';
+const DEFAULT_URLS = [
+  'https://yb.tl/Simple/wtrsvghjkl23',
+  'https://yb.tl/links/arc2025'
+];
 const DATA_DIR = path.join(__dirname, '../data');
 
 interface RowingData {
@@ -58,7 +61,26 @@ function convertToDecimalDegrees(coordinate: string): string {
   return decimal.toFixed(6);
 }
 
-export async function scrapeAndSaveData(url: string = DEFAULT_URL): Promise<void> {
+export async function scrapeAndSaveData(url?: string): Promise<void> {
+  // If no URL provided, scrape all default URLs
+  if (!url) {
+    console.log(`Scraping ${DEFAULT_URLS.length} URLs...`);
+    for (const defaultUrl of DEFAULT_URLS) {
+      try {
+        await scrapeSingleUrl(defaultUrl);
+      } catch (error) {
+        console.error(`Error scraping ${defaultUrl}:`, error);
+        // Continue with next URL even if one fails
+      }
+    }
+    return;
+  }
+  
+  // If URL provided, scrape that specific URL
+  await scrapeSingleUrl(url);
+}
+
+async function scrapeSingleUrl(url: string): Promise<void> {
   try {
     // Ensure data directory exists
     if (!fs.existsSync(DATA_DIR)) {

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rowing Race Analytics - Table View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        
+        .header {
+            background: #1e293b;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        input, select, button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #334155;
+            border-radius: 0.375rem;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+        }
+        
+        input {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        select {
+            min-width: 150px;
+        }
+        
+        button {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .view-toggle button {
+            background: #334155;
+        }
+        
+        .view-toggle button.active {
+            background: #3b82f6;
+        }
+        
+        .container {
+            padding: 2rem;
+            overflow-x: auto;
+        }
+        
+        .stats-bar {
+            background: #1e293b;
+            padding: 1rem 2rem;
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        
+        .stat-value {
+            color: #3b82f6;
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+        
+        .table-container {
+            background: #1e293b;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+        
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+        
+        th {
+            background: #0f172a;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 80px;
+            z-index: 10;
+        }
+        
+        td {
+            font-size: 0.875rem;
+        }
+        
+        .team-name {
+            font-weight: 600;
+            color: #f1f5f9;
+            position: sticky;
+            left: 0;
+            background: #1e293b;
+            z-index: 5;
+            min-width: 200px;
+            max-width: 200px;
+        }
+        
+        th.team-name-header {
+            position: sticky;
+            left: 0;
+            z-index: 15;
+            background: #0f172a;
+        }
+        
+        .speed-cell {
+            text-align: center;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .speed-very-high {
+            background: #166534;
+            color: #86efac;
+        }
+        
+        .speed-high {
+            background: #15803d;
+            color: #bbf7d0;
+        }
+        
+        .speed-medium {
+            background: #854d0e;
+            color: #fde047;
+        }
+        
+        .speed-low {
+            background: #991b1b;
+            color: #fca5a5;
+        }
+        
+        .speed-very-low {
+            background: #7f1d1d;
+            color: #fecaca;
+        }
+        
+        .empty-cell {
+            text-align: center;
+            color: #475569;
+            font-style: italic;
+        }
+        
+        .daily-avg-cell {
+            font-weight: 700;
+            font-size: 1.125rem;
+            background: #334155;
+        }
+        
+        tbody tr:hover {
+            background: #334155;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            font-size: 1.125rem;
+            color: #94a3b8;
+        }
+        
+        .error {
+            background: #7f1d1d;
+            color: #fecaca;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin: 1rem;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 2rem;
+            background: #1e293b;
+            flex-wrap: wrap;
+            font-size: 0.75rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Rowing Race Analytics</h1>
+        <div class="controls">
+            <input type="text" id="urlInput" placeholder="Race URL" value="https://yb.tl/Simple/arc2025">
+            <select id="dateSelect">
+                <option value="">Today</option>
+            </select>
+            <button onclick="loadTableData()">Load Data</button>
+            <div class="view-toggle">
+                <button onclick="window.location.href='/map'">🗺️ Map</button>
+                <button class="active">📊 Analytics</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stats-bar" id="statsBar" style="display: none;">
+        <div class="stat">
+            <span class="stat-label">Teams:</span>
+            <span class="stat-value" id="teamCount">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Date:</span>
+            <span class="stat-value" id="dateDisplay">-</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Race:</span>
+            <span class="stat-value" id="raceDisplay">-</span>
+        </div>
+    </div>
+    
+    <div class="legend" id="legend" style="display: none;">
+        <div class="legend-item">
+            <div class="legend-color" style="background: #166534;"></div>
+            <span>> 8 knots</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #15803d;"></div>
+            <span>7-8 knots</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #854d0e;"></div>
+            <span>5-7 knots</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #991b1b;"></div>
+            <span>3-5 knots</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #7f1d1d;"></div>
+            <span>< 3 knots</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #1e293b; border: 1px solid #475569;"></div>
+            <span>No data</span>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div id="content">
+            <div class="loading">Enter a race URL and select a date, then click "Load Data"</div>
+        </div>
+    </div>
+
+    <script>
+        let currentUrl = '';
+
+        // Load available dates when URL changes
+        async function loadAvailableDates() {
+            const url = document.getElementById('urlInput').value;
+            if (!url || url === currentUrl) return;
+            
+            currentUrl = url;
+
+            try {
+                const response = await fetch(`/analytics/dates?sourceUrl=${encodeURIComponent(url)}`);
+                const result = await response.json();
+
+                if (result.success && result.dates.length > 0) {
+                    const dateSelect = document.getElementById('dateSelect');
+                    dateSelect.innerHTML = '<option value="">Today</option>';
+                    
+                    result.dates.forEach(date => {
+                        const option = document.createElement('option');
+                        option.value = date;
+                        option.textContent = date;
+                        dateSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading dates:', error);
+            }
+        }
+
+        async function loadTableData() {
+            const url = document.getElementById('urlInput').value;
+            const date = document.getElementById('dateSelect').value;
+            
+            if (!url) {
+                alert('Please enter a race URL');
+                return;
+            }
+
+            await loadAvailableDates();
+
+            document.getElementById('content').innerHTML = '<div class="loading">Loading analytics...</div>';
+            document.getElementById('statsBar').style.display = 'none';
+            document.getElementById('legend').style.display = 'none';
+
+            try {
+                let endpoint = `/analytics/table?sourceUrl=${encodeURIComponent(url)}`;
+                if (date) {
+                    endpoint += `&date=${date}`;
+                }
+
+                const response = await fetch(endpoint);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayTable(result);
+                    updateStats(result);
+                } else {
+                    document.getElementById('content').innerHTML = `<div class="error">Error: ${result.message}</div>`;
+                }
+            } catch (error) {
+                console.error('Error loading table data:', error);
+                document.getElementById('content').innerHTML = `<div class="error">Failed to load analytics: ${error.message}</div>`;
+            }
+        }
+
+        function displayTable(result) {
+            if (result.data.length === 0) {
+                document.getElementById('content').innerHTML = '<div class="loading">No data found. Please scrape the race data first.</div>';
+                return;
+            }
+
+            const timeWindows = ['00:00-04:00', '04:00-08:00', '08:00-12:00', '12:00-16:00', '16:00-20:00', '20:00-24:00'];
+
+            let html = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="team-name-header">Team Name</th>
+                                <th>Daily Average</th>
+                                ${timeWindows.map(w => `<th>${w}</th>`).join('')}
+                                <th>Data Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            result.data.forEach(team => {
+                html += '<tr>';
+                html += `<td class="team-name">${team.teamName}</td>`;
+                html += `<td class="daily-avg-cell ${getSpeedClass(team.dailyAverage)}">${team.dailyAverage !== null ? team.dailyAverage : '-'}</td>`;
+                
+                timeWindows.forEach(window => {
+                    const speed = team[window];
+                    if (speed !== null && speed !== undefined) {
+                        html += `<td class="speed-cell ${getSpeedClass(speed)}">${speed}</td>`;
+                    } else {
+                        html += `<td class="empty-cell">-</td>`;
+                    }
+                });
+                
+                html += `<td style="text-align: center; color: #94a3b8;">${team.dataPoints}</td>`;
+                html += '</tr>';
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('content').innerHTML = html;
+            document.getElementById('legend').style.display = 'flex';
+        }
+
+        function getSpeedClass(speed) {
+            if (speed === null || speed === undefined) return '';
+            if (speed > 8) return 'speed-very-high';
+            if (speed >= 7) return 'speed-high';
+            if (speed >= 5) return 'speed-medium';
+            if (speed >= 3) return 'speed-low';
+            return 'speed-very-low';
+        }
+
+        function updateStats(result) {
+            document.getElementById('teamCount').textContent = result.count;
+            document.getElementById('dateDisplay').textContent = result.date;
+            document.getElementById('raceDisplay').textContent = result.sourceUrl.split('/').pop();
+            document.getElementById('statsBar').style.display = 'flex';
+        }
+
+        // Load dates when input changes
+        document.getElementById('urlInput').addEventListener('change', loadAvailableDates);
+        document.getElementById('urlInput').addEventListener('blur', loadAvailableDates);
+    </script>
+</body>
+</html>

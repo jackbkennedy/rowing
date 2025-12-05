@@ -89,68 +89,139 @@ export async function getTeamAnalytics(req: Request, res: Response) {
 }
 
 /**
- * Get analytics for all teams
+ * Get analytics in table format for all teams on a specific day
  * Query params:
  * - sourceUrl: source URL to filter by (required)
- * - startDate: start date for analytics (optional, ISO format)
- * - endDate: end date for analytics (optional, ISO format)
+ * - date: date to analyze (optional, defaults to today, format: YYYY-MM-DD)
  */
-export async function getAllTeamsAnalytics(req: Request, res: Response) {
+export async function getTableAnalytics(req: Request, res: Response) {
   try {
-    const { sourceUrl, startDate, endDate } = req.query;
+    const { sourceUrl, date } = req.query;
 
     if (!sourceUrl || typeof sourceUrl !== 'string') {
       return res.status(400).json({
         success: false,
-        message: 'Source URL is required. Example: /analytics/all?sourceUrl=https://yb.tl/Simple/arc2025'
+        message: 'Source URL is required. Example: /analytics/table?sourceUrl=https://yb.tl/Simple/arc2025&date=2025-12-05'
       });
     }
 
-    // Build query filter
-    const where: any = { sourceUrl };
-
-    if (startDate || endDate) {
-      where.scrapedAt = {};
-      if (startDate && typeof startDate === 'string') {
-        where.scrapedAt.gte = new Date(startDate);
-      }
-      if (endDate && typeof endDate === 'string') {
-        where.scrapedAt.lte = new Date(endDate);
-      }
-    }
+    // Parse date or use today
+    const targetDate = date && typeof date === 'string' ? date : new Date().toISOString().split('T')[0];
+    const startOfDay = new Date(targetDate + 'T00:00:00Z');
+    const endOfDay = new Date(targetDate + 'T23:59:59Z');
 
     // Get all unique team names for this source URL
     const teams = await prisma.rowingData.findMany({
-      where,
+      where: { sourceUrl },
       select: { name: true },
-      distinct: ['name']
+      distinct: ['name'],
+      orderBy: { name: 'asc' }
     });
 
     // Calculate analytics for each team
-    const allAnalytics: TeamAnalytics[] = [];
+    const tableData = [];
 
     for (const team of teams) {
       const teamData = await prisma.rowingData.findMany({
-        where: { ...where, name: team.name },
+        where: {
+          sourceUrl,
+          name: team.name,
+          scrapedAt: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        },
         orderBy: { scrapedAt: 'asc' }
       });
 
-      if (teamData.length > 0) {
-        const analytics = calculateAnalytics(teamData);
-        allAnalytics.push(analytics);
-      }
+      // Calculate time window averages
+      const windows = [
+        { name: '00:00-04:00', start: 0, end: 4 },
+        { name: '04:00-08:00', start: 4, end: 8 },
+        { name: '08:00-12:00', start: 8, end: 12 },
+        { name: '12:00-16:00', start: 12, end: 16 },
+        { name: '16:00-20:00', start: 16, end: 20 },
+        { name: '20:00-24:00', start: 20, end: 24 }
+      ];
+
+      const timeWindowData: { [key: string]: number | null } = {};
+
+      windows.forEach(window => {
+        const windowData = teamData.filter(d => {
+          const hour = new Date(d.scrapedAt).getUTCHours();
+          return hour >= window.start && hour < window.end;
+        });
+
+        if (windowData.length > 0) {
+          const speeds = windowData.map(d => parseFloat(d.speed) || 0);
+          const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+          timeWindowData[window.name] = parseFloat(avgSpeed.toFixed(2));
+        } else {
+          timeWindowData[window.name] = null;
+        }
+      });
+
+      // Calculate daily average (only from available data)
+      const allSpeeds = teamData.map(d => parseFloat(d.speed) || 0);
+      const dailyAvg = allSpeeds.length > 0 
+        ? parseFloat((allSpeeds.reduce((a, b) => a + b, 0) / allSpeeds.length).toFixed(2))
+        : null;
+
+      tableData.push({
+        teamName: team.name,
+        dailyAverage: dailyAvg,
+        dataPoints: teamData.length,
+        ...timeWindowData
+      });
     }
 
     res.json({
       success: true,
-      count: allAnalytics.length,
-      data: allAnalytics
+      date: targetDate,
+      sourceUrl,
+      count: tableData.length,
+      data: tableData
     });
   } catch (error) {
-    console.error('Error getting all teams analytics:', error);
+    console.error('Error getting table analytics:', error);
     res.status(500).json({
       success: false,
-      message: 'Error calculating analytics',
+      message: 'Error calculating table analytics',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
+ * Get available dates for a source URL
+ */
+export async function getAvailableDates(req: Request, res: Response) {
+  try {
+    const { sourceUrl } = req.query;
+
+    if (!sourceUrl || typeof sourceUrl !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Source URL is required'
+      });
+    }
+
+    const dates = await prisma.$queryRaw<any[]>`
+      SELECT DISTINCT DATE("scrapedAt") as date
+      FROM rowing_data
+      WHERE "sourceUrl" = ${sourceUrl}
+      ORDER BY date DESC
+    `;
+
+    res.json({
+      success: true,
+      dates: dates.map(d => d.date.toISOString().split('T')[0])
+    });
+  } catch (error) {
+    console.error('Error getting available dates:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching dates',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

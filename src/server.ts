@@ -1,8 +1,10 @@
 import express, { Request, Response } from 'express';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
+import path from 'path';
 import { scrapeAndSaveData } from './scraper';
-import { getTeamAnalytics, getAllTeamsAnalytics } from './analytics';
+import { getTeamAnalytics, getTableAnalytics, getAvailableDates } from './analytics';
+import { getMapData } from './map';
 import prisma from './database';
 
 // Load environment variables
@@ -13,20 +15,33 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Health check endpoint
 app.get('/', (req: Request, res: Response) => {
   res.json({ 
     status: 'Server is running',
-    message: 'Data scraping runs every 2 hours',
+    message: 'Data scraping runs every hour',
     endpoints: {
       scrapeDefault: '/scrape-now',
       scrapeCustomUrl: '/scrape-url?url=YOUR_URL_HERE',
       teamAnalytics: '/analytics/team?name=TEAM_NAME&sourceUrl=URL',
-      allTeamsAnalytics: '/analytics/all?sourceUrl=URL'
+      tableAnalytics: '/analytics/table?sourceUrl=URL&date=YYYY-MM-DD',
+      mapView: '/map',
+      analyticsView: '/analytics-view',
+      mapData: '/map/data?sourceUrl=URL'
     },
     nextRun: 'Check logs for next scheduled run'
   });
+});
+
+// Web views
+app.get('/map', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '../public/map.html'));
+});
+
+app.get('/analytics-view', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '../public/analytics.html'));
 });
 
 // Manual trigger endpoint
@@ -88,11 +103,15 @@ app.get('/scrape-url', async (req: Request, res: Response) => {
 
 // Analytics endpoints
 app.get('/analytics/team', getTeamAnalytics);
-app.get('/analytics/all', getAllTeamsAnalytics);
+app.get('/analytics/table', getTableAnalytics);
+app.get('/analytics/dates', getAvailableDates);
 
-// Schedule cron job to run every 2 hours
+// Map endpoints
+app.get('/map/data', getMapData);
+
+// Schedule cron job to run every hour
 // Format: minute hour day month day-of-week
-cron.schedule('0 */2 * * *', async () => {
+cron.schedule('0 * * * *', async () => {
   console.log('Running scheduled data scrape...');
   try {
     await scrapeAndSaveData();
@@ -105,7 +124,7 @@ cron.schedule('0 */2 * * *', async () => {
 // Start the server
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
-  console.log(`Cron job scheduled to run every 2 hours`);
+  console.log(`Cron job scheduled to run every hour`);
   console.log(`Visit http://localhost:${PORT}/scrape-now to manually trigger a scrape`);
   
   // Test database connection

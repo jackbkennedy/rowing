@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rowing Race Tracker - Map View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        
+        .header {
+            background: #1e293b;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        input, select, button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #334155;
+            border-radius: 0.375rem;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+        }
+        
+        input {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        button {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .view-toggle button {
+            background: #334155;
+        }
+        
+        .view-toggle button.active {
+            background: #3b82f6;
+        }
+        
+        #map {
+            height: calc(100vh - 200px);
+            width: 100%;
+        }
+        
+        .info-window {
+            color: #1e293b;
+            font-size: 0.875rem;
+        }
+        
+        .info-window h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        .info-window p {
+            margin: 0.25rem 0;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 2rem;
+            padding: 1rem 2rem;
+            background: #1e293b;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚣 Rowing Race Tracker</h1>
+        <div class="controls">
+            <input type="text" id="urlInput" placeholder="Enter race URL (e.g., https://yb.tl/Simple/arc2025)" value="https://yb.tl/Simple/arc2025">
+            <button onclick="loadMapData()">Load Race</button>
+            <div class="view-toggle">
+                <button class="active" onclick="window.location.href='/map'">🗺️ Map</button>
+                <button onclick="window.location.href='/analytics-view'">📊 Analytics</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="stats" id="stats">
+        <div class="stat">
+            <div class="stat-value" id="boatCount">0</div>
+            <div class="stat-label">Boats</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="avgSpeed">0.0</div>
+            <div class="stat-label">Avg Speed (knots)</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="lastUpdate">-</div>
+            <div class="stat-label">Last Update</div>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+
+    <script>
+        const GOOGLE_API_KEY = 'AIzaSyDvZkCD8dE8AHfGya8Z_l8coxbhcsKiDvM';
+        let map;
+        let markers = [];
+        let infoWindow;
+
+        function initMap() {
+            // Center on Atlantic Ocean
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 4,
+                center: { lat: 18, lng: -50 },
+                styles: [
+                    { elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+                    { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
+                    { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
+                    {
+                        featureType: 'water',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#0e7490' }]
+                    }
+                ]
+            });
+            
+            infoWindow = new google.maps.InfoWindow();
+        }
+
+        async function loadMapData() {
+            const url = document.getElementById('urlInput').value;
+            if (!url) {
+                alert('Please enter a race URL');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/map/data?sourceUrl=${encodeURIComponent(url)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayBoatsOnMap(result.data);
+                    updateStats(result.data);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error loading map data:', error);
+                alert('Failed to load race data');
+            }
+        }
+
+        function displayBoatsOnMap(boats) {
+            // Clear existing markers
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+
+            if (boats.length === 0) {
+                alert('No boat data found. Please scrape the race data first.');
+                return;
+            }
+
+            // Create bounds to fit all boats
+            const bounds = new google.maps.LatLngBounds();
+
+            boats.forEach(boat => {
+                const position = { lat: boat.lat, lng: boat.lng };
+                
+                const marker = new google.maps.Marker({
+                    position: position,
+                    map: map,
+                    title: boat.name,
+                    icon: {
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        scale: 5,
+                        fillColor: getSpeedColor(boat.speed),
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: '#ffffff',
+                        rotation: boat.course
+                    }
+                });
+
+                marker.addListener('click', () => {
+                    const content = `
+                        <div class="info-window">
+                            <h3>${boat.name}</h3>
+                            <p><strong>Speed:</strong> ${boat.speed} knots</p>
+                            <p><strong>Course:</strong> ${boat.course}°</p>
+                            <p><strong>Position:</strong> ${boat.lat.toFixed(4)}, ${boat.lng.toFixed(4)}</p>
+                            <p><strong>Last Update:</strong> ${boat.lastUpdate}</p>
+                        </div>
+                    `;
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+
+                markers.push(marker);
+                bounds.extend(position);
+            });
+
+            // Fit map to show all boats
+            map.fitBounds(bounds);
+        }
+
+        function getSpeedColor(speed) {
+            if (speed < 3) return '#ef4444'; // red - slow
+            if (speed < 6) return '#f59e0b'; // orange - medium
+            if (speed < 8) return '#eab308'; // yellow - good
+            return '#22c55e'; // green - fast
+        }
+
+        function updateStats(boats) {
+            document.getElementById('boatCount').textContent = boats.length;
+            
+            const avgSpeed = boats.reduce((sum, boat) => sum + boat.speed, 0) / boats.length;
+            document.getElementById('avgSpeed').textContent = avgSpeed.toFixed(1);
+            
+            if (boats.length > 0) {
+                const latest = new Date(boats[0].scrapedAt);
+                document.getElementById('lastUpdate').textContent = latest.toLocaleTimeString();
+            }
+        }
+
+        // Load default race on page load
+        window.onload = () => {
+            loadMapData();
+        };
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDvZkCD8dE8AHfGya8Z_l8coxbhcsKiDvM&callback=initMap"></script>
+</body>
+</html>
+
