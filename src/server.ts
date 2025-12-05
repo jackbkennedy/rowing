@@ -5,7 +5,7 @@ import path from 'path';
 import { scrapeAndSaveData } from './scraper';
 import { getTeamAnalytics, getTableAnalytics, getAvailableDates } from './analytics';
 import { getMapData } from './map';
-import prisma from './database';
+import prisma, { ensureConnection } from './database';
 
 // Load environment variables
 dotenv.config();
@@ -160,12 +160,20 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log('='.repeat(60));
   
-  // Test database connection
-  try {
-    await prisma.$connect();
-    console.log('✅ Database connected successfully');
-  } catch (error) {
-    console.error('❌ Failed to connect to database:', error);
+  // Test database connection with retry
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      await ensureConnection();
+      break;
+    } catch (error) {
+      retries--;
+      console.error(`❌ Database connection failed. Retries left: ${retries}`);
+      if (retries > 0) {
+        console.log('⏳ Waiting 3 seconds before retry...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
   }
   
   // Cron job status

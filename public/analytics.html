@@ -21,8 +21,10 @@
             background: #1e293b;
             padding: 1.5rem 2rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            position: sticky;
+            position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             z-index: 200;
         }
         
@@ -101,6 +103,10 @@
             background: #3b82f6;
         }
         
+        body {
+            padding-top: 140px;
+        }
+        
         .container {
             padding: 2rem;
             overflow-x: auto;
@@ -114,7 +120,7 @@
             align-items: center;
             flex-wrap: wrap;
             position: sticky;
-            top: 100px;
+            top: 0;
             z-index: 150;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
@@ -164,7 +170,7 @@
             font-size: 0.75rem;
             letter-spacing: 0.05em;
             position: sticky;
-            top: 215px;
+            top: 0;
             z-index: 130;
             text-align: center;
             vertical-align: middle;
@@ -333,7 +339,7 @@
             flex-wrap: wrap;
             font-size: 0.75rem;
             position: sticky;
-            top: 165px;
+            top: 0;
             z-index: 140;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }

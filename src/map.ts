@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from './database';
+import prisma, { ensureConnection } from './database';
 
 /**
  * Get current positions of all boats for map display
@@ -16,6 +16,9 @@ export async function getMapData(req: Request, res: Response) {
         message: 'Source URL is required. Example: /map/data?sourceUrl=https://yb.tl/Simple/arc2025'
       });
     }
+
+    // Ensure database connection
+    await ensureConnection();
 
     // Get the latest position for each boat
     const boats = await prisma.$queryRaw<any[]>`

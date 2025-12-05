@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio';
 import { createObjectCsvWriter } from 'csv-writer';
 import * as path from 'path';
 import * as fs from 'fs';
-import prisma from './database';
+import prisma, { ensureConnection } from './database';
 
 const DEFAULT_URLS = [
   'https://yb.tl/Simple/wtrsvghjkl23',
@@ -178,6 +178,9 @@ async function scrapeSingleUrl(url: string): Promise<void> {
     // Save to database with upsert to handle duplicates
     try {
       console.log('Saving data to database...');
+      
+      // Ensure database connection
+      await ensureConnection();
       
       // Use individual upsert operations to handle duplicates
       let upsertedCount = 0;

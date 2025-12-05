@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from './database';
+import prisma, { ensureConnection } from './database';
 
 interface TimeWindow {
   window: string;
@@ -90,7 +90,7 @@ export async function getTeamAnalytics(req: Request, res: Response) {
 
 /**
  * Get analytics in table format for all teams on a specific day
- * with 7-day average comparisons
+ * with 7-day average comparisons (OPTIMIZED)
  * Query params:
  * - sourceUrl: source URL to filter by (required)
  * - date: date to analyze (optional, defaults to today, format: YYYY-MM-DD)
@@ -106,6 +106,9 @@ export async function getTableAnalytics(req: Request, res: Response) {
       });
     }
 
+    // Ensure database connection
+    await ensureConnection();
+
     // Parse date or use today
     const targetDate = date && typeof date === 'string' ? date : new Date().toISOString().split('T')[0];
     const startOfDay = new Date(targetDate + 'T00:00:00Z');
@@ -115,53 +118,62 @@ export async function getTableAnalytics(req: Request, res: Response) {
     const sevenDaysAgo = new Date(startOfDay);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get all unique team names for this source URL
-    const teams = await prisma.rowingData.findMany({
-      where: { sourceUrl },
-      select: { name: true },
-      distinct: ['name'],
-      orderBy: { name: 'asc' }
-    });
-
-    // Calculate analytics for each team
-    const tableData = [];
-
-    for (const team of teams) {
-      // Get data for the target day
-      const teamData = await prisma.rowingData.findMany({
+    // OPTIMIZED: Fetch ALL data in just 2 queries instead of 2*N queries
+    const [todayData, historicalData] = await Promise.all([
+      // Query 1: All teams' data for today
+      prisma.rowingData.findMany({
         where: {
           sourceUrl,
-          name: team.name,
           scrapedAt: {
             gte: startOfDay,
             lte: endOfDay
           }
         },
-        orderBy: { scrapedAt: 'asc' }
-      });
-
-      // Get data for the last 7 days (for comparison)
-      const sevenDayData = await prisma.rowingData.findMany({
+        orderBy: { name: 'asc' }
+      }),
+      // Query 2: All teams' data for last 7 days
+      prisma.rowingData.findMany({
         where: {
           sourceUrl,
-          name: team.name,
           scrapedAt: {
             gte: sevenDaysAgo,
-            lt: startOfDay // Don't include today
+            lt: startOfDay
           }
         },
-        orderBy: { scrapedAt: 'asc' }
-      });
+        orderBy: { name: 'asc' }
+      })
+    ]);
 
-      // Calculate time window averages
-      const windows = [
-        { name: '00:00-04:00', start: 0, end: 4 },
-        { name: '04:00-08:00', start: 4, end: 8 },
-        { name: '08:00-12:00', start: 8, end: 12 },
-        { name: '12:00-16:00', start: 12, end: 16 },
-        { name: '16:00-20:00', start: 16, end: 20 },
-        { name: '20:00-24:00', start: 20, end: 24 }
-      ];
+    // Group data by team name
+    const teamDataMap: { [key: string]: any[] } = {};
+    const teamHistoricalMap: { [key: string]: any[] } = {};
+
+    todayData.forEach(record => {
+      if (!teamDataMap[record.name]) teamDataMap[record.name] = [];
+      teamDataMap[record.name].push(record);
+    });
+
+    historicalData.forEach(record => {
+      if (!teamHistoricalMap[record.name]) teamHistoricalMap[record.name] = [];
+      teamHistoricalMap[record.name].push(record);
+    });
+
+    // Get unique team names
+    const teamNames = Array.from(new Set([...Object.keys(teamDataMap), ...Object.keys(teamHistoricalMap)])).sort();
+
+    // Calculate analytics for each team (now in memory, no more DB queries)
+    const windows = [
+      { name: '00:00-04:00', start: 0, end: 4 },
+      { name: '04:00-08:00', start: 4, end: 8 },
+      { name: '08:00-12:00', start: 8, end: 12 },
+      { name: '12:00-16:00', start: 12, end: 16 },
+      { name: '16:00-20:00', start: 16, end: 20 },
+      { name: '20:00-24:00', start: 20, end: 24 }
+    ];
+
+    const tableData = teamNames.map(teamName => {
+      const teamData = teamDataMap[teamName] || [];
+      const sevenDayData = teamHistoricalMap[teamName] || [];
 
       const timeWindowData: { [key: string]: any } = {};
 
@@ -219,15 +231,15 @@ export async function getTableAnalytics(req: Request, res: Response) {
         ? parseFloat((allHistoricalSpeeds.reduce((a, b) => a + b, 0) / allHistoricalSpeeds.length).toFixed(2))
         : null;
 
-      tableData.push({
-        teamName: team.name,
+      return {
+        teamName: teamName,
         dailyAverage: dailyAvg,
         sevenDayAverage: sevenDayOverallAvg,
         dataPoints: teamData.length,
         historicalDataPoints: sevenDayData.length,
         ...timeWindowData
-      });
-    }
+      };
+    });
 
     res.json({
       success: true,
