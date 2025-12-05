@@ -8,4 +8,16 @@ data/
 # Prisma
 .env.local
 .env.*.local
+.history/
 
+# VSCode
+.vscode/
+
+# Node
+node_modules/
+
+# Yarn
+yarn.lock
+
+# Bun
+bun.lockb
