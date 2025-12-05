@@ -7,7 +7,7 @@ import prisma, { ensureConnection } from './database';
 
 const DEFAULT_URLS = [
   'https://yb.tl/Simple/wtrsvghjkl23',
-  'https://yb.tl/links/arc2025'
+  'https://yb.tl/Simple/arc2025'
 ];
 const DATA_DIR = path.join(__dirname, '../data');
 
