@@ -22,6 +22,7 @@ interface RowingData {
   nextWaypoint: string;
   dtf: string;
   vmg: string;
+  sourceUrl: string;
   scrapedAt: string;
 }
 
@@ -98,6 +99,7 @@ export async function scrapeAndSaveData(): Promise<void> {
           nextWaypoint: $(cells[8]).text().trim(),
           dtf: $(cells[9]).text().trim(),
           vmg: $(cells[10]).text().trim(),
+          sourceUrl: URL,
           scrapedAt: scrapedAt
         };
 
@@ -137,6 +139,7 @@ export async function scrapeAndSaveData(): Promise<void> {
         { id: 'nextWaypoint', title: 'Next Waypoint' },
         { id: 'dtf', title: 'DTF (NM)' },
         { id: 'vmg', title: 'VMG (knots)' },
+        { id: 'sourceUrl', title: 'Source URL' },
         { id: 'scrapedAt', title: 'Scraped At' }
       ]
     });
@@ -166,6 +169,7 @@ export async function scrapeAndSaveData(): Promise<void> {
         nextWaypoint: row.nextWaypoint,
         dtf: row.dtf,
         vmg: row.vmg,
+        sourceUrl: row.sourceUrl,
         scrapedAt: new Date(scrapedAt)
       }));
 

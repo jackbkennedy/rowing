@@ -25,6 +25,7 @@ model RowingData {
   nextWaypoint      String
   dtf               String
   vmg               String
+  sourceUrl         String
   scrapedAt         DateTime
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
