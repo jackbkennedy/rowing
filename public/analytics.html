@@ -23,7 +23,7 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 200;
         }
         
         .header h1 {
@@ -72,6 +72,22 @@
             background: #2563eb;
         }
         
+        button:disabled {
+            background: #475569;
+            border-color: #475569;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        .export-btn {
+            background: #059669;
+            border-color: #059669;
+        }
+        
+        .export-btn:hover {
+            background: #047857;
+        }
+        
         .view-toggle {
             display: flex;
             gap: 0.5rem;
@@ -97,6 +113,10 @@
             gap: 2rem;
             align-items: center;
             flex-wrap: wrap;
+            position: sticky;
+            top: 100px;
+            z-index: 150;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
         
         .stat {
@@ -144,10 +164,11 @@
             font-size: 0.75rem;
             letter-spacing: 0.05em;
             position: sticky;
-            top: 80px;
-            z-index: 10;
+            top: 215px;
+            z-index: 130;
             text-align: center;
             vertical-align: middle;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
         
         td {
@@ -160,17 +181,19 @@
             position: sticky;
             left: 0;
             background: #1e293b;
-            z-index: 5;
+            z-index: 50;
             min-width: 200px;
             max-width: 200px;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.2);
         }
         
         th.team-name-header {
             position: sticky;
             left: 0;
-            z-index: 15;
+            z-index: 160;
             background: #0f172a;
             text-align: left;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.3);
         }
         
         .header-main {
@@ -309,6 +332,10 @@
             background: #1e293b;
             flex-wrap: wrap;
             font-size: 0.75rem;
+            position: sticky;
+            top: 165px;
+            z-index: 140;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
         
         .legend-item {
@@ -333,6 +360,7 @@
                 <option value="">Today</option>
             </select>
             <button onclick="loadTableData()">Load Data</button>
+            <button class="export-btn" id="exportBtn" onclick="exportToCSV()" disabled>📥 Export CSV</button>
             <div class="view-toggle">
                 <button onclick="window.location.href='/map'">🗺️ Map</button>
                 <button class="active">📊 Analytics</button>
@@ -390,6 +418,7 @@
 
     <script>
         let currentUrl = '';
+        let currentData = null; // Store the current data for export
 
         // Load available dates when URL changes
         async function loadAvailableDates() {
@@ -445,6 +474,8 @@
                 if (result.success) {
                     displayTable(result);
                     updateStats(result);
+                    currentData = result; // Store for export
+                    document.getElementById('exportBtn').disabled = false;
                 } else {
                     document.getElementById('content').innerHTML = `<div class="error">Error: ${result.message}</div>`;
                 }
@@ -548,6 +579,59 @@
             document.getElementById('dateDisplay').textContent = result.date;
             document.getElementById('raceDisplay').textContent = result.sourceUrl.split('/').pop();
             document.getElementById('statsBar').style.display = 'flex';
+        }
+
+        function exportToCSV() {
+            if (!currentData || !currentData.data || currentData.data.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            const timeWindows = ['00:00-04:00', '04:00-08:00', '08:00-12:00', '12:00-16:00', '16:00-20:00', '20:00-24:00'];
+            
+            // Build CSV header
+            let csv = 'Team Name,Daily Average,7-Day Average,';
+            timeWindows.forEach(window => {
+                csv += `${window} Current,${window} 7-Day Avg,${window} Diff,${window} % Change,`;
+            });
+            csv += 'Data Points,Historical Data Points\n';
+
+            // Build CSV rows
+            currentData.data.forEach(team => {
+                let row = `"${team.teamName}",`;
+                row += `${team.dailyAverage || ''},`;
+                row += `${team.sevenDayAverage || ''},`;
+                
+                timeWindows.forEach(window => {
+                    const data = team[window];
+                    if (data && data.current !== null) {
+                        row += `${data.current},`;
+                        row += `${data.sevenDayAvg || ''},`;
+                        row += `${data.diff || ''},`;
+                        row += `${data.percentChange || ''},`;
+                    } else {
+                        row += ',,,,,';
+                    }
+                });
+                
+                row += `${team.dataPoints},`;
+                row += `${team.historicalDataPoints || ''}`;
+                csv += row + '\n';
+            });
+
+            // Create download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const filename = `rowing-analytics-${currentData.date}-${currentData.sourceUrl.split('/').pop()}.csv`;
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // Load dates when input changes

@@ -40,6 +40,8 @@ export async function getMapData(req: Request, res: Response) {
       name: boat.name,
       lat: parseFloat(boat.latitudeDecimal),
       lng: parseFloat(boat.longitudeDecimal),
+      latOriginal: boat.latitude,
+      lngOriginal: boat.longitude,
       speed: parseFloat(boat.speed) || 0,
       course: parseInt(boat.course) || 0,
       lastUpdate: boat.lastUpdate,

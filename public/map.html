@@ -239,7 +239,11 @@
                             <h3>${boat.name}</h3>
                             <p><strong>Speed:</strong> ${boat.speed} knots</p>
                             <p><strong>Course:</strong> ${boat.course}°</p>
-                            <p><strong>Position:</strong> ${boat.lat.toFixed(4)}, ${boat.lng.toFixed(4)}</p>
+                            <p><strong>Position (Decimal):</strong><br>
+                               ${boat.lat.toFixed(6)}, ${boat.lng.toFixed(6)}</p>
+                            <p><strong>Position (Degrees):</strong><br>
+                               ${boat.latOriginal || 'N/A'}<br>
+                               ${boat.lngOriginal || 'N/A'}</p>
                             <p><strong>Last Update:</strong> ${boat.lastUpdate}</p>
                         </div>
                     `;
