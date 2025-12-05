@@ -119,9 +119,6 @@
             gap: 2rem;
             align-items: center;
             flex-wrap: wrap;
-            position: sticky;
-            top: 0;
-            z-index: 150;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
         
@@ -145,8 +142,9 @@
         .table-container {
             background: #1e293b;
             border-radius: 0.5rem;
-            overflow: hidden;
+            overflow: auto;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            max-height: calc(100vh - 350px);
         }
         
         table {
@@ -338,9 +336,6 @@
             background: #1e293b;
             flex-wrap: wrap;
             font-size: 0.75rem;
-            position: sticky;
-            top: 0;
-            z-index: 140;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
         
