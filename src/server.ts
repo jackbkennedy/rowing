@@ -17,12 +17,33 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Health check endpoint
+// Health check endpoint for Render
+app.get('/health', async (req: Request, res: Response) => {
+  try {
+    // Check database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ 
+      status: 'ok',
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'error',
+      database: 'disconnected',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Main info endpoint
 app.get('/', (req: Request, res: Response) => {
   res.json({ 
     status: 'Server is running',
     message: 'Data scraping runs every hour',
     endpoints: {
+      health: '/health',
       scrapeDefault: '/scrape-now',
       scrapeCustomUrl: '/scrape-url?url=YOUR_URL_HERE',
       teamAnalytics: '/analytics/team?name=TEAM_NAME&sourceUrl=URL',

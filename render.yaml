@@ -7,7 +7,7 @@ services:
     buildCommand: yarn install && yarn db:generate && yarn build
     preDeployCommand: npx prisma migrate deploy
     startCommand: yarn start
-    healthCheckPath: /
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
