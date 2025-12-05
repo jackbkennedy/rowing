@@ -90,6 +90,7 @@ export async function getTeamAnalytics(req: Request, res: Response) {
 
 /**
  * Get analytics in table format for all teams on a specific day
+ * with 7-day average comparisons
  * Query params:
  * - sourceUrl: source URL to filter by (required)
  * - date: date to analyze (optional, defaults to today, format: YYYY-MM-DD)
@@ -109,6 +110,10 @@ export async function getTableAnalytics(req: Request, res: Response) {
     const targetDate = date && typeof date === 'string' ? date : new Date().toISOString().split('T')[0];
     const startOfDay = new Date(targetDate + 'T00:00:00Z');
     const endOfDay = new Date(targetDate + 'T23:59:59Z');
+    
+    // Calculate date range for 7-day average (7 days before target date)
+    const sevenDaysAgo = new Date(startOfDay);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     // Get all unique team names for this source URL
     const teams = await prisma.rowingData.findMany({
@@ -122,6 +127,7 @@ export async function getTableAnalytics(req: Request, res: Response) {
     const tableData = [];
 
     for (const team of teams) {
+      // Get data for the target day
       const teamData = await prisma.rowingData.findMany({
         where: {
           sourceUrl,
@@ -129,6 +135,19 @@ export async function getTableAnalytics(req: Request, res: Response) {
           scrapedAt: {
             gte: startOfDay,
             lte: endOfDay
+          }
+        },
+        orderBy: { scrapedAt: 'asc' }
+      });
+
+      // Get data for the last 7 days (for comparison)
+      const sevenDayData = await prisma.rowingData.findMany({
+        where: {
+          sourceUrl,
+          name: team.name,
+          scrapedAt: {
+            gte: sevenDaysAgo,
+            lt: startOfDay // Don't include today
           }
         },
         orderBy: { scrapedAt: 'asc' }
@@ -144,21 +163,48 @@ export async function getTableAnalytics(req: Request, res: Response) {
         { name: '20:00-24:00', start: 20, end: 24 }
       ];
 
-      const timeWindowData: { [key: string]: number | null } = {};
+      const timeWindowData: { [key: string]: any } = {};
 
       windows.forEach(window => {
+        // Current day data for this window
         const windowData = teamData.filter(d => {
           const hour = new Date(d.scrapedAt).getUTCHours();
           return hour >= window.start && hour < window.end;
         });
 
+        // 7-day historical data for this window
+        const historicalWindowData = sevenDayData.filter(d => {
+          const hour = new Date(d.scrapedAt).getUTCHours();
+          return hour >= window.start && hour < window.end;
+        });
+
+        let currentSpeed = null;
+        let sevenDayAvg = null;
+        let diff = null;
+        let percentChange = null;
+
         if (windowData.length > 0) {
           const speeds = windowData.map(d => parseFloat(d.speed) || 0);
-          const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
-          timeWindowData[window.name] = parseFloat(avgSpeed.toFixed(2));
-        } else {
-          timeWindowData[window.name] = null;
+          currentSpeed = parseFloat((speeds.reduce((a, b) => a + b, 0) / speeds.length).toFixed(2));
         }
+
+        if (historicalWindowData.length > 0) {
+          const historicalSpeeds = historicalWindowData.map(d => parseFloat(d.speed) || 0);
+          sevenDayAvg = parseFloat((historicalSpeeds.reduce((a, b) => a + b, 0) / historicalSpeeds.length).toFixed(2));
+        }
+
+        // Calculate difference and percent change
+        if (currentSpeed !== null && sevenDayAvg !== null) {
+          diff = parseFloat((currentSpeed - sevenDayAvg).toFixed(2));
+          percentChange = parseFloat(((diff / sevenDayAvg) * 100).toFixed(1));
+        }
+
+        timeWindowData[window.name] = {
+          current: currentSpeed,
+          sevenDayAvg: sevenDayAvg,
+          diff: diff,
+          percentChange: percentChange
+        };
       });
 
       // Calculate daily average (only from available data)
@@ -167,10 +213,18 @@ export async function getTableAnalytics(req: Request, res: Response) {
         ? parseFloat((allSpeeds.reduce((a, b) => a + b, 0) / allSpeeds.length).toFixed(2))
         : null;
 
+      // Calculate 7-day overall average
+      const allHistoricalSpeeds = sevenDayData.map(d => parseFloat(d.speed) || 0);
+      const sevenDayOverallAvg = allHistoricalSpeeds.length > 0
+        ? parseFloat((allHistoricalSpeeds.reduce((a, b) => a + b, 0) / allHistoricalSpeeds.length).toFixed(2))
+        : null;
+
       tableData.push({
         teamName: team.name,
         dailyAverage: dailyAvg,
+        sevenDayAverage: sevenDayOverallAvg,
         dataPoints: teamData.length,
+        historicalDataPoints: sevenDayData.length,
         ...timeWindowData
       });
     }
@@ -179,6 +233,7 @@ export async function getTableAnalytics(req: Request, res: Response) {
       success: true,
       date: targetDate,
       sourceUrl,
+      comparisonPeriod: '7 days',
       count: tableData.length,
       data: tableData
     });

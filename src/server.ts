@@ -132,35 +132,53 @@ app.get('/map/data', getMapData);
 
 // Schedule cron job to run every hour
 // Format: minute hour day month day-of-week
-cron.schedule('0 * * * *', async () => {
-  console.log('Running scheduled data scrape...');
+const cronJob = cron.schedule('0 * * * *', async () => {
+  const now = new Date();
+  console.log(`[CRON] Running scheduled data scrape at ${now.toISOString()}`);
   try {
     await scrapeAndSaveData();
-    console.log('Scheduled scrape completed successfully');
+    console.log(`[CRON] Scheduled scrape completed successfully at ${new Date().toISOString()}`);
   } catch (error) {
-    console.error('Error during scheduled scrape:', error);
+    console.error('[CRON] Error during scheduled scrape:', error);
   }
 });
 
+// Calculate next cron run time
+function getNextCronRun(): string {
+  const now = new Date();
+  const nextRun = new Date(now);
+  nextRun.setHours(now.getHours() + 1);
+  nextRun.setMinutes(0);
+  nextRun.setSeconds(0);
+  nextRun.setMilliseconds(0);
+  return nextRun.toISOString();
+}
+
 // Start the server
 app.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Cron job scheduled to run every hour`);
-  console.log(`Visit http://localhost:${PORT}/scrape-now to manually trigger a scrape`);
+  console.log('='.repeat(60));
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log('='.repeat(60));
   
   // Test database connection
   try {
     await prisma.$connect();
-    console.log('Database connected successfully');
+    console.log('✅ Database connected successfully');
   } catch (error) {
-    console.error('Failed to connect to database:', error);
+    console.error('❌ Failed to connect to database:', error);
   }
   
+  // Cron job status
+  console.log('⏰ Cron job status: ACTIVE');
+  console.log(`📅 Cron schedule: Every hour (at minute 0)`);
+  console.log(`⏭️  Next scheduled run: ${getNextCronRun()}`);
+  console.log('='.repeat(60));
+  
   // Run immediately on startup
-  console.log('Running initial data scrape...');
+  console.log('🔄 Running initial data scrape...');
   scrapeAndSaveData()
-    .then(() => console.log('Initial scrape completed successfully'))
-    .catch(error => console.error('Error during initial scrape:', error));
+    .then(() => console.log('✅ Initial scrape completed successfully'))
+    .catch(error => console.error('❌ Error during initial scrape:', error));
 });
 
 // Graceful shutdown
