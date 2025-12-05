@@ -21,5 +21,4 @@ databases:
   - name: rowing-db
     databaseName: rowing_db
     user: rowing_db
-    plan: starter
-    previewPlan: starter
+    plan: free
