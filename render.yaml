@@ -22,4 +22,4 @@ databases:
   - name: rowing-database
     databaseName: rowing_database
     user: rowing_database_user
-    plan: free
+    plan: starter
