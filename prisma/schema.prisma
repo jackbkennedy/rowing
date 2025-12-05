@@ -30,8 +30,10 @@ model RowingData {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  @@unique([name, sourceUrl, lastUpdate])
   @@index([scrapedAt])
   @@index([name])
+  @@index([sourceUrl])
   @@map("rowing_data")
 }
 

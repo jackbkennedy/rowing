@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import prisma from './database';
 
-const URL = 'https://yb.tl/Simple/wtrsvghjkl23';
+const DEFAULT_URL = 'https://yb.tl/Simple/wtrsvghjkl23';
 const DATA_DIR = path.join(__dirname, '../data');
 
 interface RowingData {
@@ -58,15 +58,15 @@ function convertToDecimalDegrees(coordinate: string): string {
   return decimal.toFixed(6);
 }
 
-export async function scrapeAndSaveData(): Promise<void> {
+export async function scrapeAndSaveData(url: string = DEFAULT_URL): Promise<void> {
   try {
     // Ensure data directory exists
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
 
-    console.log(`Fetching data from ${URL}...`);
-    const response = await axios.get(URL, {
+    console.log(`Fetching data from ${url}...`);
+    const response = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
@@ -99,7 +99,7 @@ export async function scrapeAndSaveData(): Promise<void> {
           nextWaypoint: $(cells[8]).text().trim(),
           dtf: $(cells[9]).text().trim(),
           vmg: $(cells[10]).text().trim(),
-          sourceUrl: URL,
+          sourceUrl: url,
           scrapedAt: scrapedAt
         };
 
@@ -114,13 +114,14 @@ export async function scrapeAndSaveData(): Promise<void> {
       return;
     }
 
-    // Generate filename with timestamp
+    // Generate filename with timestamp and URL identifier
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `rowing-data-${timestamp}.csv`;
+    const urlSlug = url.split('/').pop()?.replace(/[^a-zA-Z0-9]/g, '_') || 'data';
+    const filename = `rowing-data-${urlSlug}-${timestamp}.csv`;
     const filepath = path.join(DATA_DIR, filename);
 
-    // Also save to a "latest.csv" file
-    const latestFilepath = path.join(DATA_DIR, 'latest.csv');
+    // Also save to a "latest-{urlSlug}.csv" file
+    const latestFilepath = path.join(DATA_DIR, `latest-${urlSlug}.csv`);
 
     // Create CSV writer
     const csvWriter = createObjectCsvWriter({
@@ -152,32 +153,57 @@ export async function scrapeAndSaveData(): Promise<void> {
     fs.copyFileSync(filepath, latestFilepath);
     console.log(`Data also saved to ${latestFilepath}`);
 
-    // Save to database
+    // Save to database with upsert to handle duplicates
     try {
       console.log('Saving data to database...');
-      const records = rowData.map(row => ({
-        no: row.no,
-        device: row.device,
-        name: row.name,
-        lastUpdate: row.lastUpdate,
-        latitude: row.latitude,
-        longitude: row.longitude,
-        latitudeDecimal: row.latitudeDecimal,
-        longitudeDecimal: row.longitudeDecimal,
-        speed: row.speed,
-        course: row.course,
-        nextWaypoint: row.nextWaypoint,
-        dtf: row.dtf,
-        vmg: row.vmg,
-        sourceUrl: row.sourceUrl,
-        scrapedAt: new Date(scrapedAt)
-      }));
+      
+      // Use individual upsert operations to handle duplicates
+      let upsertedCount = 0;
+      for (const row of rowData) {
+        await prisma.rowingData.upsert({
+          where: {
+            name_sourceUrl_lastUpdate: {
+              name: row.name,
+              sourceUrl: row.sourceUrl,
+              lastUpdate: row.lastUpdate
+            }
+          },
+          update: {
+            no: row.no,
+            device: row.device,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            latitudeDecimal: row.latitudeDecimal,
+            longitudeDecimal: row.longitudeDecimal,
+            speed: row.speed,
+            course: row.course,
+            nextWaypoint: row.nextWaypoint,
+            dtf: row.dtf,
+            vmg: row.vmg,
+            scrapedAt: new Date(scrapedAt)
+          },
+          create: {
+            no: row.no,
+            device: row.device,
+            name: row.name,
+            lastUpdate: row.lastUpdate,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            latitudeDecimal: row.latitudeDecimal,
+            longitudeDecimal: row.longitudeDecimal,
+            speed: row.speed,
+            course: row.course,
+            nextWaypoint: row.nextWaypoint,
+            dtf: row.dtf,
+            vmg: row.vmg,
+            sourceUrl: row.sourceUrl,
+            scrapedAt: new Date(scrapedAt)
+          }
+        });
+        upsertedCount++;
+      }
 
-      await prisma.rowingData.createMany({
-        data: records
-      });
-
-      console.log(`Successfully saved ${records.length} records to database`);
+      console.log(`Successfully upserted ${upsertedCount} records to database (duplicates ignored)`);
     } catch (dbError) {
       console.error('Error saving to database:', dbError);
       // Don't throw - we still want the CSV to be saved even if DB fails

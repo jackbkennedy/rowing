@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
 import { scrapeAndSaveData } from './scraper';
+import { getTeamAnalytics, getAllTeamsAnalytics } from './analytics';
 import prisma from './database';
 
 // Load environment variables
@@ -18,6 +19,12 @@ app.get('/', (req: Request, res: Response) => {
   res.json({ 
     status: 'Server is running',
     message: 'Data scraping runs every 2 hours',
+    endpoints: {
+      scrapeDefault: '/scrape-now',
+      scrapeCustomUrl: '/scrape-url?url=YOUR_URL_HERE',
+      teamAnalytics: '/analytics/team?name=TEAM_NAME&sourceUrl=URL',
+      allTeamsAnalytics: '/analytics/all?sourceUrl=URL'
+    },
     nextRun: 'Check logs for next scheduled run'
   });
 });
@@ -40,6 +47,48 @@ app.get('/scrape-now', async (req: Request, res: Response) => {
     });
   }
 });
+
+// Custom URL scrape endpoint
+app.get('/scrape-url', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'URL parameter is required. Example: /scrape-url?url=https://yb.tl/Simple/arc2025'
+      });
+    }
+
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid URL format'
+      });
+    }
+
+    console.log(`Custom URL scrape triggered for: ${url}`);
+    await scrapeAndSaveData(url);
+    res.json({ 
+      success: true, 
+      message: `Data scraped from ${url} and saved successfully` 
+    });
+  } catch (error) {
+    console.error('Error during custom URL scrape:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error scraping data',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Analytics endpoints
+app.get('/analytics/team', getTeamAnalytics);
+app.get('/analytics/all', getAllTeamsAnalytics);
 
 // Schedule cron job to run every 2 hours
 // Format: minute hour day month day-of-week
