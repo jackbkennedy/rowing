@@ -78,13 +78,77 @@
         }
         
         #map {
-            height: calc(100vh - 200px);
+            height: calc(100vh - 320px);
             width: 100%;
+        }
+        
+        .timeline-controls {
+            background: #1e293b;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .timeline-slider {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: #334155;
+            outline: none;
+            border-radius: 4px;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        
+        .timeline-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .timeline-timestamp {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #3b82f6;
+        }
+        
+        .timeline-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .timeline-buttons button {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
         }
         
         .info-window {
             color: #1e293b;
             font-size: 0.875rem;
+            min-width: 250px;
         }
         
         .info-window h3 {
@@ -95,6 +159,36 @@
         
         .info-window p {
             margin: 0.25rem 0;
+        }
+        
+        .speed-comparison {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: #f1f5f9;
+            border-radius: 0.25rem;
+        }
+        
+        .speed-diff {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        .diff-positive {
+            background: #166534;
+            color: #86efac;
+        }
+        
+        .diff-negative {
+            background: #991b1b;
+            color: #fca5a5;
+        }
+        
+        .diff-neutral {
+            background: #334155;
+            color: #94a3b8;
         }
         
         .stats {
@@ -152,12 +246,31 @@
     </div>
     
     <div id="map"></div>
+    
+    <div class="timeline-controls" id="timelineControls" style="display: none;">
+        <div class="timeline-slider">
+            <input type="range" id="timeSlider" min="0" max="0" value="0" step="1">
+        </div>
+        <div class="timeline-info">
+            <div class="timeline-timestamp" id="currentTimestamp">Select a time</div>
+            <div class="timeline-buttons">
+                <button onclick="playTimeline()">▶ Play</button>
+                <button onclick="pauseTimeline()">⏸ Pause</button>
+                <button onclick="resetTimeline()">⏮ Reset</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const GOOGLE_API_KEY = 'AIzaSyDvZkCD8dE8AHfGya8Z_l8coxbhcsKiDvM';
         let map;
         let markers = [];
+        let polylines = [];
         let infoWindow;
+        let timelineData = [];
+        let boatHistories = new Map(); // Store full boat position histories
+        let currentTimeIndex = 0;
+        let playInterval = null;
 
         function initMap() {
             // Center on Atlantic Ocean
@@ -191,8 +304,13 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    displayBoatsOnMap(result.data);
-                    updateStats(result.data);
+                    timelineData = result.data;
+                    buildBoatHistories();
+                    setupTimeline(result.timestamps);
+                    // Show most recent data by default
+                    currentTimeIndex = 0;
+                    displayBoatsAtTime(0);
+                    updateGlobalStats(result.boatCount);
                 } else {
                     alert('Error: ' + result.message);
                 }
@@ -202,19 +320,114 @@
             }
         }
 
-        function displayBoatsOnMap(boats) {
-            // Clear existing markers
+        function buildBoatHistories() {
+            // Build a map of boat name -> array of positions in chronological order (oldest to newest)
+            boatHistories.clear();
+            
+            // timelineData[0] = newest, timelineData[n-1] = oldest
+            // Process in reverse to go oldest to newest
+            for (let i = timelineData.length - 1; i >= 0; i--) {
+                const boats = timelineData[i].boats;
+                boats.forEach(boat => {
+                    if (!boatHistories.has(boat.name)) {
+                        boatHistories.set(boat.name, []);
+                    }
+                    // Store in chronological order (oldest first)
+                    boatHistories.get(boat.name).push({
+                        lat: boat.lat,
+                        lng: boat.lng,
+                        timeIndex: i,
+                        timestamp: timelineData[i].timestamp
+                    });
+                });
+            }
+            console.log('Built histories for', boatHistories.size, 'boats');
+            // Log sample boat
+            if (boatHistories.size > 0) {
+                const firstBoat = Array.from(boatHistories.entries())[0];
+                console.log('Sample boat:', firstBoat[0], 'has', firstBoat[1].length, 'positions');
+            }
+        }
+
+        function setupTimeline(timestamps) {
+            if (timestamps.length === 0) return;
+            
+            const slider = document.getElementById('timeSlider');
+            slider.max = timestamps.length - 1;
+            slider.value = 0;
+            
+            slider.oninput = function() {
+                currentTimeIndex = parseInt(this.value);
+                displayBoatsAtTime(currentTimeIndex);
+            };
+            
+            document.getElementById('timelineControls').style.display = 'block';
+        }
+
+        function displayBoatsAtTime(timeIndex) {
+            if (!timelineData[timeIndex]) return;
+            
+            const boats = timelineData[timeIndex].boats;
+            const timestamp = timelineData[timeIndex].timestamp;
+            
+            // Update timestamp display
+            const date = new Date(timestamp);
+            document.getElementById('currentTimestamp').textContent = 
+                date.toLocaleString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            
+            // Clear existing markers and polylines
             markers.forEach(marker => marker.setMap(null));
             markers = [];
+            polylines.forEach(polyline => polyline.setMap(null));
+            polylines = [];
 
             if (boats.length === 0) {
-                alert('No boat data found. Please scrape the race data first.');
                 return;
             }
 
             // Create bounds to fit all boats
             const bounds = new google.maps.LatLngBounds();
 
+            // First, draw all polylines (so they appear behind markers)
+            boats.forEach(boat => {
+                const position = { lat: boat.lat, lng: boat.lng };
+                bounds.extend(position);
+                
+                // Draw path trail for this boat up to current time
+                const boatHistory = boatHistories.get(boat.name);
+                if (boatHistory && boatHistory.length > 1) {
+                    // Get all positions from start (oldest) up to current time index
+                    // boatHistory is in chronological order (oldest first)
+                    // We want all positions where the timeIndex is >= current timeIndex
+                    // (because higher timeIndex = older in our timeline array)
+                    const pathPositions = boatHistory
+                        .filter(pos => pos.timeIndex >= timeIndex)
+                        .map(pos => ({ lat: pos.lat, lng: pos.lng }));
+                    
+                    console.log('Boat:', boat.name, 'Total history:', boatHistory.length, 'Path positions:', pathPositions.length, 'at timeIndex:', timeIndex);
+                    
+                    if (pathPositions.length > 1) {
+                        const pathLine = new google.maps.Polyline({
+                            path: pathPositions,
+                            geodesic: true,
+                            strokeColor: getSpeedColor(boat.speed),
+                            strokeOpacity: 0.7,
+                            strokeWeight: 3,
+                            map: map,
+                            zIndex: 1
+                        });
+                        polylines.push(pathLine);
+                    }
+                }
+            });
+
+            // Then, draw all markers (so they appear on top)
             boats.forEach(boat => {
                 const position = { lat: boat.lat, lng: boat.lng };
                 
@@ -222,6 +435,7 @@
                     position: position,
                     map: map,
                     title: boat.name,
+                    zIndex: 100,
                     icon: {
                         path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
                         scale: 5,
@@ -234,35 +448,91 @@
                 });
 
                 marker.addListener('click', () => {
-                    const content = `
-                        <div class="info-window">
-                            <h3>${boat.name}</h3>
-                            <p><strong>Speed:</strong> ${boat.speed} knots</p>
-                            <p><strong>Course:</strong> ${boat.course}°</p>
-                            <p><strong>Position (Decimal):</strong><br>
-                               ${boat.lat.toFixed(6)}, ${boat.lng.toFixed(6)}</p>
-                            <p><strong>Position (Degrees):</strong><br>
-                               ${boat.latOriginal || 'N/A'}<br>
-                               ${boat.lngOriginal || 'N/A'}</p>
-                            <p><strong>Last Update:</strong> ${boat.lastUpdate}</p>
-                        </div>
-                    `;
+                    const content = createInfoWindowContent(boat);
                     infoWindow.setContent(content);
                     infoWindow.open(map, marker);
                 });
 
                 markers.push(marker);
-                bounds.extend(position);
             });
 
-            // Fit map to show all boats
-            map.fitBounds(bounds);
+            // Only fit bounds on first load
+            if (timeIndex === 0) {
+                map.fitBounds(bounds);
+            }
+            
+            // Update stats
+            updateStats(boats);
+        }
+
+        function createInfoWindowContent(boat) {
+            let speedComparisonHTML = '';
+            
+            if (boat.prevAvgSpeed !== null) {
+                const diffClass = boat.speedDiff > 0 ? 'diff-positive' : 
+                                 boat.speedDiff < 0 ? 'diff-negative' : 'diff-neutral';
+                const arrow = boat.speedDiff > 0 ? '↑' : boat.speedDiff < 0 ? '↓' : '→';
+                
+                speedComparisonHTML = `
+                    <div class="speed-comparison">
+                        <p><strong>Speed Comparison:</strong></p>
+                        <p>Current: ${boat.speed.toFixed(1)} knots</p>
+                        <p>Previous: ${boat.prevAvgSpeed.toFixed(1)} knots</p>
+                        <span class="speed-diff ${diffClass}">
+                            ${arrow} ${Math.abs(boat.speedDiff).toFixed(1)} 
+                            (${boat.percentChange > 0 ? '+' : ''}${boat.percentChange}%)
+                        </span>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="info-window">
+                    <h3>${boat.name}</h3>
+                    <p><strong>Speed:</strong> ${boat.speed.toFixed(1)} knots</p>
+                    <p><strong>Course:</strong> ${boat.course}°</p>
+                    <p><strong>Position (Decimal):</strong><br>
+                       ${boat.lat.toFixed(6)}, ${boat.lng.toFixed(6)}</p>
+                    <p><strong>Position (Degrees):</strong><br>
+                       ${boat.latOriginal || 'N/A'}<br>
+                       ${boat.lngOriginal || 'N/A'}</p>
+                    <p><strong>Last Update:</strong> ${boat.lastUpdate}</p>
+                    ${speedComparisonHTML}
+                </div>
+            `;
+        }
+
+        function playTimeline() {
+            if (playInterval) return; // Already playing
+            
+            playInterval = setInterval(() => {
+                currentTimeIndex++;
+                if (currentTimeIndex >= timelineData.length) {
+                    currentTimeIndex = 0; // Loop back to start
+                }
+                document.getElementById('timeSlider').value = currentTimeIndex;
+                displayBoatsAtTime(currentTimeIndex);
+            }, 2000); // Update every 2 seconds
+        }
+
+        function pauseTimeline() {
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+        }
+
+        function resetTimeline() {
+            pauseTimeline();
+            currentTimeIndex = 0;
+            document.getElementById('timeSlider').value = 0;
+            displayBoatsAtTime(0);
         }
 
         function getSpeedColor(speed) {
             if (speed < 3) return '#ef4444'; // red - slow
-            if (speed < 6) return '#f59e0b'; // orange - medium
-            if (speed < 8) return '#eab308'; // yellow - good
+            if (speed < 5) return '#f59e0b'; // orange - medium
+            if (speed < 7) return '#eab308'; // yellow - good
             return '#22c55e'; // green - fast
         }
 
@@ -272,10 +542,14 @@
             const avgSpeed = boats.reduce((sum, boat) => sum + boat.speed, 0) / boats.length;
             document.getElementById('avgSpeed').textContent = avgSpeed.toFixed(1);
             
-            if (boats.length > 0) {
+            if (boats.length > 0 && boats[0].scrapedAt) {
                 const latest = new Date(boats[0].scrapedAt);
                 document.getElementById('lastUpdate').textContent = latest.toLocaleTimeString();
             }
+        }
+
+        function updateGlobalStats(boatCount) {
+            document.getElementById('boatCount').textContent = boatCount;
         }
 
         // Load default race on page load
