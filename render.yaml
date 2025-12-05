@@ -4,7 +4,8 @@ services:
     previewPlan: starter
     name: rowing-data-scraper-api
     runtime: node
-    buildCommand: yarn install && yarn db:generate && yarn build && npx prisma migrate deploy
+    buildCommand: yarn install && yarn db:generate && yarn build
+    preDeployCommand: npx prisma migrate deploy
     startCommand: yarn start
     healthCheckPath: /
     envVars:
