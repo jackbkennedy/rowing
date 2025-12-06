@@ -117,6 +117,10 @@ app.get('/analytics-view', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../public/analytics.html'));
 });
 
+app.get('/navigator', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '../public/navigator.html'));
+});
+
 app.get('/docs', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../public/docs.html'));
 });

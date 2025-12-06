@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigator Dashboard - Rowing Race Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: #1e293b;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+        }
+        
+        .header h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        input, select, button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #334155;
+            border-radius: 0.375rem;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.875rem;
+        }
+        
+        input {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        select {
+            min-width: 200px;
+        }
+        
+        button {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .view-toggle button {
+            background: #334155;
+        }
+        
+        .content {
+            margin-top: 140px;
+            padding: 2rem;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            font-size: 1.25rem;
+            color: #94a3b8;
+        }
+        
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            color: #fca5a5;
+        }
+        
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+        }
+        
+        .card h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Hero Stats */
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .stat-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+        
+        .stat-change {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        
+        .stat-change.positive {
+            color: #10b981;
+        }
+        
+        .stat-change.negative {
+            color: #ef4444;
+        }
+        
+        /* Rankings */
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .ranking-item.current-team {
+            background: rgba(59, 130, 246, 0.2);
+            border: 2px solid #3b82f6;
+        }
+        
+        .rank-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #3b82f6;
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        .rank-medal {
+            font-size: 1.5rem;
+        }
+        
+        .team-info {
+            flex: 1;
+        }
+        
+        .team-name {
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        
+        .team-stats {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+        
+        /* Performance Chart */
+        .chart-container {
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+        }
+        
+        /* Time Windows */
+        .time-windows {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+        }
+        
+        .time-window {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        
+        .time-window.best {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+        }
+        
+        .time-window.worst {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+        }
+        
+        .window-time {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+        
+        .window-speed {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+        
+        .window-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+        
+        /* Recommendations */
+        .recommendation {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .recommendation.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: #f59e0b;
+        }
+        
+        .recommendation.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: #10b981;
+        }
+        
+        .recommendation-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .recommendation-text {
+            font-size: 0.875rem;
+            color: #cbd5e1;
+        }
+        
+        /* Progress Bar */
+        .progress-bar {
+            background: rgba(0, 0, 0, 0.3);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            height: 100%;
+            transition: width 0.3s;
+        }
+        
+        /* Competition Table */
+        .competition-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .competition-table th,
+        .competition-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .competition-table th {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        .competition-table tr.current-team {
+            background: rgba(59, 130, 246, 0.2);
+        }
+        
+        .gap {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+        
+        .gap.catchable {
+            color: #10b981;
+        }
+        
+        .gap.danger {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧭 Navigator Dashboard <small style="font-size: 0.5em; font-weight: normal;"><a href="https://www.linkedin.com/in/markpbolger/" target="_blank" style="color: inherit; text-decoration: none;">by Mark Bolger</a></small></h1>
+        <div class="controls">
+            <input type="text" id="urlInput" placeholder="Race URL" value="https://yb.tl/Simple/arc2025">
+            <select id="teamSelect">
+                <option value="">Select your team...</option>
+            </select>
+            <button onclick="loadDashboard()">Load Dashboard</button>
+            <div class="view-toggle">
+                <button onclick="window.location.href='/map'">🗺️ Map</button>
+                <button onclick="window.location.href='/analytics-view'">📊 Analytics</button>
+                <button class="active" onclick="window.location.href='/navigator'">🧭 Navigator</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="content" id="content">
+        <div class="loading">
+            Select your team to view navigator dashboard
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+        let selectedTeam = null;
+
+        async function loadTeams() {
+            const url = document.getElementById('urlInput').value;
+            if (!url) return;
+
+            try {
+                const response = await fetch(`/analytics/table?sourceUrl=${encodeURIComponent(url)}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const teamSelect = document.getElementById('teamSelect');
+                    teamSelect.innerHTML = '<option value="">Select your team...</option>';
+                    
+                    result.data
+                        .sort((a, b) => a.teamName.localeCompare(b.teamName))
+                        .forEach(team => {
+                            const option = document.createElement('option');
+                            option.value = team.teamName;
+                            option.textContent = team.teamName;
+                            teamSelect.appendChild(option);
+                        });
+                }
+            } catch (error) {
+                console.error('Error loading teams:', error);
+            }
+        }
+
+        async function loadDashboard() {
+            const url = document.getElementById('urlInput').value;
+            const team = document.getElementById('teamSelect').value;
+            
+            if (!url || !team) {
+                alert('Please select a team');
+                return;
+            }
+
+            selectedTeam = team;
+            document.getElementById('content').innerHTML = '<div class="loading">Loading navigator dashboard...</div>';
+
+            try {
+                // Fetch all necessary data
+                const [tableResponse, teamResponse, mapResponse] = await Promise.all([
+                    fetch(`/analytics/table?sourceUrl=${encodeURIComponent(url)}`),
+                    fetch(`/analytics/team?name=${encodeURIComponent(team)}&sourceUrl=${encodeURIComponent(url)}`),
+                    fetch(`/map/data?sourceUrl=${encodeURIComponent(url)}`)
+                ]);
+
+                const tableData = await tableResponse.json();
+                const teamData = await teamResponse.json();
+                const mapData = await mapResponse.json();
+
+                if (tableData.success && teamData.success && mapData.success) {
+                    currentData = {
+                        table: tableData.data,
+                        team: teamData.data,
+                        map: mapData.data,
+                        date: tableData.date
+                    };
+                    renderDashboard();
+                } else {
+                    document.getElementById('content').innerHTML = '<div class="error">Error loading data</div>';
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('content').innerHTML = '<div class="error">Failed to load dashboard</div>';
+            }
+        }
+
+        function renderDashboard() {
+            const myTeamData = currentData.table.find(t => t.teamName === selectedTeam);
+            if (!myTeamData) return;
+
+            // Calculate rankings
+            const rankings = currentData.table
+                .map(t => ({
+                    name: t.teamName,
+                    avgSpeed: t.dailyAverage || 0,
+                    dataPoints: t.dataPoints
+                }))
+                .sort((a, b) => b.avgSpeed - a.avgSpeed);
+
+            const myRank = rankings.findIndex(r => r.name === selectedTeam) + 1;
+
+            // Calculate best/worst time windows
+            const timeWindows = ['00:00-04:00', '04:00-08:00', '08:00-12:00', '12:00-16:00', '16:00-20:00', '20:00-24:00'];
+            const windowPerformance = timeWindows.map(window => ({
+                window,
+                speed: myTeamData[window]?.current || 0
+            })).filter(w => w.speed > 0);
+
+            const bestWindow = windowPerformance.reduce((best, curr) => 
+                curr.speed > best.speed ? curr : best, windowPerformance[0] || {});
+            const worstWindow = windowPerformance.reduce((worst, curr) => 
+                curr.speed < worst.speed ? curr : worst, windowPerformance[0] || {});
+
+            // Calculate 7-day trend
+            const trend = myTeamData.dailyAverage && myTeamData.sevenDayAverage
+                ? ((myTeamData.dailyAverage - myTeamData.sevenDayAverage) / myTeamData.sevenDayAverage * 100).toFixed(1)
+                : null;
+
+            // Calculate competition gaps
+            const teamsAhead = rankings.slice(0, myRank - 1).slice(-3);
+            const teamsBehind = rankings.slice(myRank, myRank + 3);
+
+            const html = `
+                <div class="dashboard-grid">
+                    <!-- Hero Stats -->
+                    <div class="card">
+                        <h2>🎯 Current Performance</h2>
+                        <div class="hero-stats">
+                            <div class="stat-box">
+                                <div class="stat-value">#${myRank}</div>
+                                <div class="stat-label">Current Rank</div>
+                                <div class="stat-change ${trend > 0 ? 'positive' : trend < 0 ? 'negative' : ''}">
+                                    ${trend ? (trend > 0 ? '↑' : '↓') + ' ' + Math.abs(trend) + '% vs 7-day avg' : 'N/A'}
+                                </div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">${myTeamData.dailyAverage ? myTeamData.dailyAverage.toFixed(1) : 'N/A'}</div>
+                                <div class="stat-label">Avg Speed (knots)</div>
+                                <div class="stat-change">
+                                    ${myTeamData.sevenDayAverage ? myTeamData.sevenDayAverage.toFixed(1) + ' knots (7d avg)' : 'No history'}
+                                </div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">${bestWindow.window || 'N/A'}</div>
+                                <div class="stat-label">Best Time Window</div>
+                                <div class="stat-change positive">
+                                    ${bestWindow.speed ? bestWindow.speed.toFixed(1) + ' knots' : ''}
+                                </div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value">${myTeamData.dataPoints || 0}</div>
+                                <div class="stat-label">Data Points Today</div>
+                                <div class="stat-change">
+                                    ${myTeamData.historicalDataPoints || 0} in last 7 days
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommendations -->
+                    <div class="card">
+                        <h2>💡 Key Insights & Recommendations</h2>
+                        ${generateRecommendations(myTeamData, myRank, rankings.length, trend, bestWindow, worstWindow)}
+                    </div>
+
+                    <!-- Time Window Performance -->
+                    <div class="card">
+                        <h2>⏰ Performance by Time of Day</h2>
+                        <p style="color: #94a3b8; margin-bottom: 1rem; font-size: 0.875rem;">
+                            Optimize your shift patterns based on when you perform best
+                        </p>
+                        <div class="time-windows">
+                            ${timeWindows.map(window => {
+                                const data = myTeamData[window];
+                                const speed = data?.current || 0;
+                                const isBest = window === bestWindow.window;
+                                const isWorst = window === worstWindow.window;
+                                return `
+                                    <div class="time-window ${isBest ? 'best' : isWorst ? 'worst' : ''}">
+                                        <div class="window-time">${window}</div>
+                                        <div class="window-speed">${speed ? speed.toFixed(1) : '-'}</div>
+                                        <div class="window-label">
+                                            ${isBest ? '⭐ Best' : isWorst ? '⚠️ Worst' : 'knots'}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Competition Analysis -->
+                    <div class="card">
+                        <h2>🏁 Competition Analysis</h2>
+                        <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: #94a3b8;">Teams Ahead (Top 3 Closest)</h3>
+                        ${teamsAhead.length > 0 ? `
+                            <table class="competition-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Team</th>
+                                        <th>Avg Speed</th>
+                                        <th>Gap</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${teamsAhead.map((team, idx) => {
+                                        const rank = rankings.findIndex(r => r.name === team.name) + 1;
+                                        const gap = (team.avgSpeed - myTeamData.dailyAverage).toFixed(1);
+                                        return `
+                                            <tr>
+                                                <td>#${rank}</td>
+                                                <td>${team.name}</td>
+                                                <td>${team.avgSpeed.toFixed(1)} kts</td>
+                                                <td class="gap ${Math.abs(gap) < 0.5 ? 'catchable' : ''}">
+                                                    +${gap} kts ${Math.abs(gap) < 0.5 ? '(Catchable!)' : ''}
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<p style="color: #94a3b8;">You\'re in the lead! 🥇</p>'}
+
+                        <h3 style="font-size: 1rem; margin: 1.5rem 0 0.5rem; color: #94a3b8;">Teams Behind (Top 3 Closest)</h3>
+                        ${teamsBehind.length > 0 ? `
+                            <table class="competition-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Team</th>
+                                        <th>Avg Speed</th>
+                                        <th>Gap</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${teamsBehind.map(team => {
+                                        const rank = rankings.findIndex(r => r.name === team.name) + 1;
+                                        const gap = (myTeamData.dailyAverage - team.avgSpeed).toFixed(1);
+                                        return `
+                                            <tr>
+                                                <td>#${rank}</td>
+                                                <td>${team.name}</td>
+                                                <td>${team.avgSpeed.toFixed(1)} kts</td>
+                                                <td class="gap ${Math.abs(gap) < 0.5 ? 'danger' : ''}">
+                                                    -${gap} kts ${Math.abs(gap) < 0.5 ? '(Close!)' : ''}
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<p style="color: #94a3b8;">You\'re in last place - time to push! 💪</p>'}
+                    </div>
+
+                    <!-- Overall Rankings -->
+                    <div class="card">
+                        <h2>📊 Overall Rankings</h2>
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            ${rankings.map((team, idx) => {
+                                const isCurrent = team.name === selectedTeam;
+                                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+                                return `
+                                    <div class="ranking-item ${isCurrent ? 'current-team' : ''}">
+                                        <div class="rank-number">${idx < 3 ? '' : '#' + (idx + 1)}</div>
+                                        ${medal ? `<div class="rank-medal">${medal}</div>` : ''}
+                                        <div class="team-info">
+                                            <div class="team-name">${team.name}</div>
+                                            <div class="team-stats">${team.avgSpeed.toFixed(1)} knots average • ${team.dataPoints} data points</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function generateRecommendations(teamData, rank, totalTeams, trend, bestWindow, worstWindow) {
+            const recommendations = [];
+
+            // Performance trend
+            if (trend && trend < -5) {
+                recommendations.push({
+                    type: 'warning',
+                    title: '⚠️ Performance Declining',
+                    text: `Your speed is down ${Math.abs(trend)}% vs 7-day average. Consider reviewing crew fatigue, shift patterns, or equipment issues.`
+                });
+            } else if (trend && trend > 5) {
+                recommendations.push({
+                    type: 'success',
+                    title: '✅ Strong Performance',
+                    text: `You're up ${trend}% vs 7-day average! Whatever you're doing is working - maintain this strategy.`
+                });
+            }
+
+            // Best time window
+            if (bestWindow.speed && worstWindow.speed) {
+                const diff = bestWindow.speed - worstWindow.speed;
+                if (diff > 1) {
+                    recommendations.push({
+                        type: 'info',
+                        title: '⏰ Optimize Shift Patterns',
+                        text: `You're ${diff.toFixed(1)} knots faster during ${bestWindow.window} vs ${worstWindow.window}. Consider shifting more effort to your peak performance windows.`
+                    });
+                }
+            }
+
+            // Ranking position
+            if (rank <= 3) {
+                recommendations.push({
+                    type: 'success',
+                    title: '🏆 Top 3 Position',
+                    text: `You're in the medals zone! Focus on consistency to maintain your position. Monitor teams close behind.`
+                });
+            } else if (rank > totalTeams * 0.75) {
+                recommendations.push({
+                    type: 'warning',
+                    title: '💪 Time to Push',
+                    text: `You're in the bottom quartile. Look for opportunities to increase speed during your best performance windows.`
+                });
+            }
+
+            // Data consistency
+            if (teamData.dataPoints < 10) {
+                recommendations.push({
+                    type: 'warning',
+                    title: '📡 Limited Data Today',
+                    text: `Only ${teamData.dataPoints} data points today. Ensure tracking device is functioning properly for accurate analytics.`
+                });
+            }
+
+            if (recommendations.length === 0) {
+                recommendations.push({
+                    type: 'info',
+                    title: '📊 Steady Performance',
+                    text: `You're maintaining a consistent pace. Look for opportunities to optimize during your best time windows.`
+                });
+            }
+
+            return recommendations.map(rec => `
+                <div class="recommendation ${rec.type}">
+                    <div class="recommendation-title">${rec.title}</div>
+                    <div class="recommendation-text">${rec.text}</div>
+                </div>
+            `).join('');
+        }
+
+        // Load teams when URL changes
+        document.getElementById('urlInput').addEventListener('change', loadTeams);
+        document.getElementById('urlInput').addEventListener('blur', loadTeams);
+        
+        // Load teams on page load
+        window.addEventListener('load', loadTeams);
+    </script>
+</body>
+</html>
