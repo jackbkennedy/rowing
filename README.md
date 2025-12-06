@@ -694,6 +694,14 @@ All CSV files are stored in the `data/` directory:
 
 ## 🎯 Use Cases
 
+### For Team Navigators (NEW!)
+- **Personal Dashboard** - `/navigator` view with team-specific insights
+- **Performance Optimization** - Identify best rowing windows and shift patterns
+- **Competition Tracking** - Monitor gaps to teams ahead and behind
+- **Strategic Recommendations** - Get actionable insights based on your data
+- **Trend Analysis** - Spot fatigue, improvements, or declining performance
+- **Rank Monitoring** - Real-time position tracking and medal zone alerts
+
 ### For Race Organizers
 - Monitor all boats in real-time
 - Verify tracking system functionality

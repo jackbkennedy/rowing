@@ -100,11 +100,24 @@ app.get('/api', (req: Request, res: Response) => {
       tableAnalytics: '/analytics/table?sourceUrl=URL&date=YYYY-MM-DD',
       mapView: '/map',
       analyticsView: '/analytics-view',
+      navigatorView: '/navigator',
       mapData: '/map/data?sourceUrl=URL',
       availableDates: '/analytics/dates?sourceUrl=URL'
     },
+    views: {
+      homepage: '/',
+      map: '/map',
+      analytics: '/analytics-view',
+      navigator: '/navigator',
+      documentation: '/docs'
+    },
+    rateLimits: {
+      analytics: '100 requests per 15 minutes',
+      scraping: '10 requests per hour',
+      webViews: '1000 requests per 15 minutes'
+    },
     nextRun: 'Check logs for next scheduled run',
-    documentation: 'See README.md for full API documentation'
+    documentation: 'Visit /docs for full API documentation'
   });
 });
 
