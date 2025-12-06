@@ -27,12 +27,13 @@ interface TeamAnalytics {
  * Query params:
  * - name: team name (required)
  * - sourceUrl: source URL to filter by (optional)
- * - startDate: start date for analytics (optional, ISO format)
- * - endDate: end date for analytics (optional, ISO format)
+ * - startDate: start date for analytics (optional, ISO format YYYY-MM-DD)
+ * - endDate: end date for analytics (optional, ISO format YYYY-MM-DD)
+ * - timezone: timezone offset in hours (optional, defaults to 0 for UTC)
  */
 export async function getTeamAnalytics(req: Request, res: Response) {
   try {
-    const { name, sourceUrl, startDate, endDate } = req.query;
+    const { name, sourceUrl, startDate, endDate, timezone } = req.query;
 
     if (!name || typeof name !== 'string') {
       return res.status(400).json({
@@ -40,6 +41,9 @@ export async function getTeamAnalytics(req: Request, res: Response) {
         message: 'Team name is required. Example: /analytics/team?name=TeamName&sourceUrl=https://yb.tl/Simple/arc2025'
       });
     }
+
+    // Parse timezone offset (default to 0 for UTC)
+    const timezoneOffset = timezone && typeof timezone === 'string' ? parseInt(timezone, 10) : 0;
 
     // Build query filter
     const where: any = { name };
@@ -51,10 +55,14 @@ export async function getTeamAnalytics(req: Request, res: Response) {
     if (startDate || endDate) {
       where.scrapedAt = {};
       if (startDate && typeof startDate === 'string') {
-        where.scrapedAt.gte = new Date(startDate);
+        const start = new Date(startDate + 'T00:00:00Z');
+        start.setHours(start.getHours() - timezoneOffset);
+        where.scrapedAt.gte = start;
       }
       if (endDate && typeof endDate === 'string') {
-        where.scrapedAt.lte = new Date(endDate);
+        const end = new Date(endDate + 'T23:59:59.999Z');
+        end.setHours(end.getHours() - timezoneOffset);
+        where.scrapedAt.lte = end;
       }
     }
 
@@ -71,8 +79,8 @@ export async function getTeamAnalytics(req: Request, res: Response) {
       });
     }
 
-    // Calculate statistics
-    const analytics = calculateAnalytics(data);
+    // Calculate statistics with timezone adjustment
+    const analytics = calculateAnalytics(data, timezoneOffset);
 
     res.json({
       success: true,
@@ -93,11 +101,12 @@ export async function getTeamAnalytics(req: Request, res: Response) {
  * with 7-day average comparisons (OPTIMIZED)
  * Query params:
  * - sourceUrl: source URL to filter by (required)
- * - date: date to analyze (optional, defaults to today, format: YYYY-MM-DD)
+ * - date: date to analyze (optional, defaults to today UTC, format: YYYY-MM-DD)
+ * - timezone: timezone offset in hours (optional, defaults to 0 for UTC)
  */
 export async function getTableAnalytics(req: Request, res: Response) {
   try {
-    const { sourceUrl, date } = req.query;
+    const { sourceUrl, date, timezone } = req.query;
 
     if (!sourceUrl || typeof sourceUrl !== 'string') {
       return res.status(400).json({
@@ -109,10 +118,32 @@ export async function getTableAnalytics(req: Request, res: Response) {
     // Ensure database connection
     await ensureConnection();
 
-    // Parse date or use today
-    const targetDate = date && typeof date === 'string' ? date : new Date().toISOString().split('T')[0];
-    const startOfDay = new Date(targetDate + 'T00:00:00Z');
-    const endOfDay = new Date(targetDate + 'T23:59:59Z');
+    // Parse timezone offset (default to 0 for UTC)
+    const timezoneOffset = timezone && typeof timezone === 'string' ? parseInt(timezone, 10) : 0;
+    
+    // Parse date or use today in the specified timezone
+    let targetDate: string;
+    if (date && typeof date === 'string') {
+      targetDate = date;
+    } else {
+      // Get current date in the user's timezone
+      const now = new Date();
+      const userDate = new Date(now.getTime() + timezoneOffset * 60 * 60 * 1000);
+      targetDate = userDate.toISOString().split('T')[0];
+    }
+    
+    // Calculate the UTC time range that corresponds to the target date in user's timezone
+    // For example, if user is in EST (UTC-5) and wants Dec 5:
+    // - Dec 5 00:00 EST = Dec 5 05:00 UTC (start)
+    // - Dec 5 23:59 EST = Dec 6 04:59 UTC (end)
+    const startOfDay = new Date(targetDate + 'T00:00:00.000Z');
+    const endOfDay = new Date(targetDate + 'T23:59:59.999Z');
+    
+    // Adjust for timezone: subtract offset to get the UTC time when it's midnight in user's timezone
+    // If user is UTC+1, midnight for them is 23:00 UTC the previous day
+    // If user is UTC-5, midnight for them is 05:00 UTC the same day
+    startOfDay.setMinutes(startOfDay.getMinutes() - timezoneOffset * 60);
+    endOfDay.setMinutes(endOfDay.getMinutes() - timezoneOffset * 60);
     
     // Calculate date range for 7-day average (7 days before target date)
     const sevenDaysAgo = new Date(startOfDay);
@@ -179,15 +210,20 @@ export async function getTableAnalytics(req: Request, res: Response) {
 
       windows.forEach(window => {
         // Current day data for this window
+        // Convert UTC timestamp to user's timezone and check which hour window it falls into
         const windowData = teamData.filter(d => {
-          const hour = new Date(d.scrapedAt).getUTCHours();
-          return hour >= window.start && hour < window.end;
+          const utcDate = new Date(d.scrapedAt);
+          // Get the hour in user's timezone
+          const localHour = (utcDate.getUTCHours() + timezoneOffset + 24) % 24;
+          return localHour >= window.start && localHour < window.end;
         });
 
         // 7-day historical data for this window
         const historicalWindowData = sevenDayData.filter(d => {
-          const hour = new Date(d.scrapedAt).getUTCHours();
-          return hour >= window.start && hour < window.end;
+          const utcDate = new Date(d.scrapedAt);
+          // Get the hour in user's timezone
+          const localHour = (utcDate.getUTCHours() + timezoneOffset + 24) % 24;
+          return localHour >= window.start && localHour < window.end;
         });
 
         let currentSpeed = null;
@@ -261,10 +297,13 @@ export async function getTableAnalytics(req: Request, res: Response) {
 
 /**
  * Get available dates for a source URL
+ * Query params:
+ * - sourceUrl: source URL (required)
+ * - timezone: timezone offset in hours (optional, defaults to 0 for UTC)
  */
 export async function getAvailableDates(req: Request, res: Response) {
   try {
-    const { sourceUrl } = req.query;
+    const { sourceUrl, timezone } = req.query;
 
     if (!sourceUrl || typeof sourceUrl !== 'string') {
       return res.status(400).json({
@@ -273,16 +312,30 @@ export async function getAvailableDates(req: Request, res: Response) {
       });
     }
 
-    const dates = await prisma.$queryRaw<any[]>`
-      SELECT DISTINCT DATE("scrapedAt") as date
-      FROM rowing_data
-      WHERE "sourceUrl" = ${sourceUrl}
-      ORDER BY date DESC
-    `;
+    // Parse timezone offset (default to 0 for UTC)
+    const timezoneOffset = timezone && typeof timezone === 'string' ? parseInt(timezone, 10) : 0;
+    
+    // Get all scraped dates and convert to user's timezone
+    const data = await prisma.rowingData.findMany({
+      where: { sourceUrl },
+      select: { scrapedAt: true },
+      orderBy: { scrapedAt: 'desc' }
+    });
+
+    // Group by date in user's timezone
+    const dateSet = new Set<string>();
+    data.forEach(record => {
+      const userDate = new Date(record.scrapedAt.getTime() + timezoneOffset * 60 * 60 * 1000);
+      const dateStr = userDate.toISOString().split('T')[0];
+      dateSet.add(dateStr);
+    });
+
+    // Convert to sorted array
+    const dates = Array.from(dateSet).sort((a, b) => b.localeCompare(a));
 
     res.json({
       success: true,
-      dates: dates.map(d => d.date.toISOString().split('T')[0])
+      dates: dates
     });
   } catch (error) {
     console.error('Error getting available dates:', error);
@@ -294,16 +347,19 @@ export async function getAvailableDates(req: Request, res: Response) {
   }
 }
 
-function calculateAnalytics(data: any[]): TeamAnalytics {
+function calculateAnalytics(data: any[], timezoneOffset: number = 0): TeamAnalytics {
   const teamName = data[0].name;
   const sourceUrl = data[0].sourceUrl;
 
-  // Group data by date
+  // Group data by date in user's timezone
   const dataByDate: { [key: string]: any[] } = {};
 
   data.forEach(record => {
-    const date = new Date(record.scrapedAt);
-    const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const utcDate = new Date(record.scrapedAt);
+    // Calculate the date in user's timezone by adding the offset and extracting the date
+    const localTimestamp = utcDate.getTime() + timezoneOffset * 60 * 60 * 1000;
+    const localDate = new Date(localTimestamp);
+    const dateKey = localDate.toISOString().split('T')[0]; // YYYY-MM-DD in user's timezone
 
     if (!dataByDate[dateKey]) {
       dataByDate[dateKey] = [];
@@ -334,8 +390,10 @@ function calculateAnalytics(data: any[]): TeamAnalytics {
 
     windows.forEach(window => {
       const windowData = dayData.filter(d => {
-        const hour = new Date(d.scrapedAt).getUTCHours();
-        return hour >= window.start && hour < window.end;
+        const utcDate = new Date(d.scrapedAt);
+        // Get the hour in user's timezone
+        const localHour = (utcDate.getUTCHours() + timezoneOffset + 24) % 24;
+        return localHour >= window.start && localHour < window.end;
       });
 
       if (windowData.length > 0) {

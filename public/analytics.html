@@ -420,6 +420,10 @@
     <script>
         let currentUrl = '';
         let currentData = null; // Store the current data for export
+        
+        // Get user's timezone offset in hours
+        const timezoneOffset = -new Date().getTimezoneOffset() / 60;
+        console.log(`User timezone offset: ${timezoneOffset} hours from UTC`);
 
         // Load available dates when URL changes
         async function loadAvailableDates() {
@@ -429,7 +433,7 @@
             currentUrl = url;
 
             try {
-                const response = await fetch(`/analytics/dates?sourceUrl=${encodeURIComponent(url)}`);
+                const response = await fetch(`/analytics/dates?sourceUrl=${encodeURIComponent(url)}&timezone=${timezoneOffset}`);
                 const result = await response.json();
 
                 if (result.success && result.dates.length > 0) {
@@ -464,7 +468,7 @@
             document.getElementById('legend').style.display = 'none';
 
             try {
-                let endpoint = `/analytics/table?sourceUrl=${encodeURIComponent(url)}`;
+                let endpoint = `/analytics/table?sourceUrl=${encodeURIComponent(url)}&timezone=${timezoneOffset}`;
                 if (date) {
                     endpoint += `&date=${date}`;
                 }
