@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rowing Race Tracker - Real-time Analytics & Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        /* Header */
+        header {
+            padding: 2rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+        }
+        
+        .btn-secondary:hover {
+            background: #334155;
+        }
+        
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 4rem 0;
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        /* Features */
+        .features {
+            padding: 4rem 0;
+        }
+        
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #3b82f6;
+        }
+        
+        .feature-card p {
+            color: #94a3b8;
+        }
+        
+        /* Demo Sections */
+        .demo-section {
+            padding: 4rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .demo-section h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .demo-section p {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .demo-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .demo-image {
+            width: 100%;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 1.25rem;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+        }
+        
+        .demo-image img {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+        }
+        
+        .demo-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            padding: 3rem 0;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 1rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #94a3b8;
+            font-size: 1rem;
+        }
+        
+        /* Footer */
+        footer {
+            padding: 3rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 4rem;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .footer-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: #3b82f6;
+        }
+        
+        .credit {
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+        
+        .credit a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        
+        .credit a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">🚣 Rowing Race Tracker</div>
+                <div class="nav-buttons">
+                    <a href="/map" class="btn btn-secondary">View Map</a>
+                    <a href="/analytics-view" class="btn btn-secondary">View Analytics</a>
+                    <a href="/docs" class="btn btn-secondary">API Docs</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <h1>Track Ocean Rowing Races in Real-Time</h1>
+                <p>Comprehensive analytics and interactive visualization for World's Toughest Row and other ocean rowing races. Monitor boat positions, compare team performance, and analyze speed trends.</p>
+                <div class="hero-buttons">
+                    <a href="/map" class="btn btn-primary">🗺️ Explore Map</a>
+                    <a href="/analytics-view" class="btn btn-primary">📊 View Analytics</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="container">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value">⏱️</div>
+                    <div class="stat-label">Hourly Data Updates</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">📍</div>
+                    <div class="stat-label">Real-Time Positions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">📈</div>
+                    <div class="stat-label">Historical Analysis</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">🎯</div>
+                    <div class="stat-label">Team Comparisons</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="features">
+            <div class="container">
+                <h2>Powerful Features</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🗺️</div>
+                        <h3>Interactive Map</h3>
+                        <p>Track all boats on an interactive map with historical playback. See routes, compare positions, and watch the race unfold over time with the timeline slider.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3>Performance Analytics</h3>
+                        <p>Deep dive into team performance with speed analytics, time window comparisons, and 7-day averages. Identify trends and patterns in racing strategies.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⏰</div>
+                        <h3>Automated Tracking</h3>
+                        <p>Data automatically scraped every hour and stored in a database. View historical data and track changes over the entire race duration.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📈</div>
+                        <h3>Time Window Analysis</h3>
+                        <p>See how teams perform during different times of day. Compare morning vs. evening speeds and identify optimal rowing periods.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🌍</div>
+                        <h3>Timezone Support</h3>
+                        <p>View data in your local timezone. Analytics automatically adjust to show data grouped by your local time, not just UTC.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💾</div>
+                        <h3>Data Export</h3>
+                        <p>Export analytics data to CSV for further analysis. All data is also available via REST API for custom integrations.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Map Demo -->
+        <section class="demo-section">
+            <div class="container">
+                <h2>Interactive Race Map</h2>
+                <p>Watch the race unfold with our interactive map. Use the timeline to see historical positions, view boat trails, and track speed changes over time.</p>
+                <div class="demo-container">
+                    <div class="demo-image">
+                        <div style="text-align: center;">
+                            <div style="font-size: 4rem; margin-bottom: 1rem;">🗺️</div>
+                            <div>Real-time boat tracking with historical playback</div>
+                            <div style="font-size: 0.875rem; margin-top: 0.5rem; color: #64748b;">Click below to explore the live map</div>
+                        </div>
+                    </div>
+                    <div class="demo-actions">
+                        <a href="/map" class="btn btn-primary">Open Interactive Map</a>
+                    </div>
+                </div>
+
+                <div class="feature-grid" style="margin-top: 2rem;">
+                    <div class="feature-card">
+                        <h3>🎮 Timeline Controls</h3>
+                        <p>Play, pause, and scrub through race history with intuitive timeline controls. Jump to any point in time instantly.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🛤️ Boat Trails</h3>
+                        <p>See the path each boat has taken with colored trails. Understand routing decisions and strategy choices.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📍 Position Info</h3>
+                        <p>Click any boat to see detailed information: speed, course, last update time, and position coordinates.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Demo -->
+        <section class="demo-section">
+            <div class="container">
+                <h2>Performance Analytics Dashboard</h2>
+                <p>Compare all teams side-by-side with comprehensive performance metrics. See speed trends, 7-day averages, and identify top performers across different time windows.</p>
+                <div class="demo-container">
+                    <div class="demo-image">
+                        <div style="text-align: center;">
+                            <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
+                            <div>Comprehensive team performance analysis</div>
+                            <div style="font-size: 0.875rem; margin-top: 0.5rem; color: #64748b;">Click below to explore the analytics dashboard</div>
+                        </div>
+                    </div>
+                    <div class="demo-actions">
+                        <a href="/analytics-view" class="btn btn-primary">Open Analytics Dashboard</a>
+                    </div>
+                </div>
+
+                <div class="feature-grid" style="margin-top: 2rem;">
+                    <div class="feature-card">
+                        <h3>⏰ Time Windows</h3>
+                        <p>4-hour time window breakdowns (00:00-04:00, 04:00-08:00, etc.) show when teams perform best.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📅 7-Day Comparison</h3>
+                        <p>Compare current performance against 7-day historical averages to spot trends and improvements.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📈 Visual Indicators</h3>
+                        <p>Color-coded cells show at a glance which teams are faster or slower than their historical average.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section class="demo-section">
+            <div class="container">
+                <h2>How It Works</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">1️⃣</div>
+                        <h3>Data Collection</h3>
+                        <p>Automated scraper runs every hour to fetch latest boat positions from YB Tracking websites.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">2️⃣</div>
+                        <h3>Data Storage</h3>
+                        <p>All data is stored in PostgreSQL database with duplicate detection and historical tracking.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">3️⃣</div>
+                        <h3>Smart Filtering</h3>
+                        <p>Intelligent filtering removes redundant data points, showing only meaningful position updates.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">4️⃣</div>
+                        <h3>Visualization</h3>
+                        <p>Real-time visualization with interactive maps and analytics dashboards updated continuously.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Section -->
+        <section class="demo-section">
+            <div class="container">
+                <h2>Developer API</h2>
+                <p>All data is available via REST API for custom integrations and analysis. Perfect for building your own applications or doing advanced data analysis.</p>
+                <div class="demo-container">
+                    <div style="background: rgba(0, 0, 0, 0.3); padding: 1.5rem; border-radius: 0.5rem; font-family: monospace; font-size: 0.875rem;">
+                        <div style="color: #94a3b8; margin-bottom: 1rem;"># Get all teams for a specific race</div>
+                        <div style="color: #3b82f6;">GET</div> <span style="color: #e2e8f0;">/analytics/table?sourceUrl=https://yb.tl/Simple/arc2025</span>
+                        <div style="color: #94a3b8; margin: 1rem 0;"># Get map data with historical positions</div>
+                        <div style="color: #3b82f6;">GET</div> <span style="color: #e2e8f0;">/map/data?sourceUrl=https://yb.tl/Simple/arc2025</span>
+                        <div style="color: #94a3b8; margin: 1rem 0;"># Get analytics for a specific team</div>
+                        <div style="color: #3b82f6;">GET</div> <span style="color: #e2e8f0;">/analytics/team?name=TeamName&sourceUrl=...</span>
+                    </div>
+                    <div class="demo-actions">
+                        <a href="/health" class="btn btn-secondary">API Health Check</a>
+                        <a href="/docs" class="btn btn-primary">View Full Documentation</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="credit">
+                    Created by <a href="https://www.linkedin.com/in/markpbolger/" target="_blank">Mark Bolger</a>
+                </div>
+                <div class="footer-links">
+                    <a href="/health">API Status</a>
+                    <a href="/map">Map</a>
+                    <a href="/analytics-view">Analytics</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

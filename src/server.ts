@@ -39,6 +39,11 @@ app.get('/health', async (req: Request, res: Response) => {
 
 // Main info endpoint
 app.get('/', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// API info endpoint (JSON response for programmatic access)
+app.get('/api', (req: Request, res: Response) => {
   res.json({ 
     status: 'Server is running',
     message: 'Data scraping runs every hour',
@@ -50,9 +55,11 @@ app.get('/', (req: Request, res: Response) => {
       tableAnalytics: '/analytics/table?sourceUrl=URL&date=YYYY-MM-DD',
       mapView: '/map',
       analyticsView: '/analytics-view',
-      mapData: '/map/data?sourceUrl=URL'
+      mapData: '/map/data?sourceUrl=URL',
+      availableDates: '/analytics/dates?sourceUrl=URL'
     },
-    nextRun: 'Check logs for next scheduled run'
+    nextRun: 'Check logs for next scheduled run',
+    documentation: 'See README.md for full API documentation'
   });
 });
 
@@ -63,6 +70,10 @@ app.get('/map', (req: Request, res: Response) => {
 
 app.get('/analytics-view', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../public/analytics.html'));
+});
+
+app.get('/docs', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '../public/docs.html'));
 });
 
 // Manual trigger endpoint

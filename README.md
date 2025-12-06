@@ -178,7 +178,19 @@ This opens a web interface at `http://localhost:5555`.
 ### System Endpoints
 
 #### `GET /`
-**Info endpoint** - Returns server status and available endpoints
+**Homepage** - Interactive landing page with feature overview and demos
+
+**What it shows:**
+- Feature highlights and capabilities
+- Links to map and analytics dashboards
+- How it works explanation
+- Developer API information
+- Quick access to all main features
+
+**Response:** HTML landing page
+
+#### `GET /api`
+**API Info endpoint** - Returns server status and available endpoints (JSON)
 
 **Response:**
 ```json
