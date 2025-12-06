@@ -9,9 +9,11 @@ A TypeScript Express server that automatically scrapes World's Toughest Row race
 - 💾 **Dual Storage** - Saves to both CSV files and PostgreSQL database
 - 📈 **Analytics API** - Comprehensive endpoints for team performance analysis
 - 🗺️ **Interactive Map** - Real-time boat tracking with time-slider
+- 🧭 **Navigator Dashboard** - Personalized insights and recommendations for teams
 - 🚀 **Manual Triggers** - On-demand scraping for any YB Tracking URL
 - 🔥 **Hot Reloading** - Development mode with automatic restarts
 - 🌐 **Coordinate Conversion** - Converts GPS coordinates to decimal format
+- 🛡️ **Rate Limiting** - IP-based rate limiting for fair usage
 
 ## Prerequisites
 
@@ -534,12 +536,21 @@ The endpoint automatically filters out redundant scrapes. Since the scraper runs
 
 ## 🖥️ Web Views
 
+### Homepage
+**URL:** `GET /` or `http://localhost:3000`
+
+**Features:**
+- Overview of all features
+- Quick links to all tools
+- Demo sections for map, analytics, and navigator
+- Developer API information
+
 ### Map View
 **URL:** `GET /map` or `http://localhost:3000/map`
 
 **Interactive features:**
 - Real-time boat positions on a map
-- Time slider to view historical positions
+- Time slider to view historical positions (intelligently filtered)
 - Boat trails showing path taken
 - Speed indicators and team information
 - Pan and zoom navigation
@@ -559,6 +570,7 @@ The endpoint automatically filters out redundant scrapes. Since the scraper runs
 - Source URL switcher for different races
 - 7-day comparison metrics
 - Time window breakdowns (4-hour intervals)
+- CSV export functionality
 
 **What you can do:**
 - Compare all teams' performance on a specific day
@@ -566,6 +578,32 @@ The endpoint automatically filters out redundant scrapes. Since the scraper runs
 - Track performance trends over the 7-day window
 - Identify fastest/slowest teams and time periods
 - Export or analyze speed differentials
+
+### Navigator Dashboard (NEW)
+**URL:** `GET /navigator` or `http://localhost:3000/navigator`
+
+**Interactive features:**
+- Team selection dropdown
+- Current rank and performance status
+- Real-time performance trend indicators
+- Smart recommendations based on your data
+- Time window optimization insights
+- Competition gap analysis (teams ahead/behind)
+
+**What you can do:**
+- Monitor your team's ranking in real-time
+- Get actionable recommendations for improving performance
+- Identify your best performance windows (optimize shift patterns)
+- Track gaps to competitors (who to catch, who's catching you)
+- Spot performance trends (improving vs. declining)
+- Make data-driven strategic decisions during the race
+
+**Navigator Insights:**
+- 🎯 Current status at a glance (rank, speed, trend)
+- 💡 Smart recommendations (fatigue detection, shift optimization)
+- ⏰ Best/worst performance windows
+- 🏁 Competition analysis (catchable targets, threats)
+- 📊 Performance trends and consistency metrics
 
 ## ⏰ Automated Cron Jobs
 
