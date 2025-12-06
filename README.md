@@ -173,6 +173,60 @@ This opens a web interface at `http://localhost:5555`.
 | `yarn db:migrate` | Create and run migrations |
 | `yarn db:studio` | Open Prisma Studio (database GUI) |
 
+## 🛡️ Rate Limiting
+
+Rate limits are enforced per IP address to ensure fair usage and system stability:
+
+### Analytics & Map Data Endpoints
+**Limit:** 100 requests per 15 minutes per IP
+
+Applies to:
+- `/analytics/team`
+- `/analytics/table`
+- `/analytics/dates`
+- `/map/data`
+
+### Scraping Endpoints
+**Limit:** 10 requests per hour per IP
+
+Applies to:
+- `/scrape-now`
+- `/scrape-url`
+
+**Note:** Scraping is automated every hour by cron jobs, so manual scraping should rarely be needed.
+
+### Web Views
+**Limit:** 1000 requests per 15 minutes per IP
+
+Applies to:
+- `/` (homepage)
+- `/map`
+- `/analytics-view`
+- `/docs`
+
+### Rate Limit Response Headers
+
+All API responses include rate limit information:
+
+```
+RateLimit-Limit: 100
+RateLimit-Remaining: 95
+RateLimit-Reset: 1638360000
+```
+
+### Rate Limit Exceeded Response
+
+When rate limited, you'll receive:
+
+```json
+{
+  "error": "Too many requests from this IP, please try again later.",
+  "retryAfter": "15 minutes"
+}
+```
+
+**Status Code:** 429 (Too Many Requests)
+
 ## 🌐 API Endpoints
 
 ### System Endpoints

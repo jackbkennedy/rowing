@@ -744,12 +744,60 @@ timezone=-5</code>
 
                 <section id="rate-limits">
                     <h2>Rate Limits</h2>
-                    <p>Currently, there are no enforced rate limits. However, please use the API responsibly:</p>
+                    <p>Rate limits are enforced per IP address to ensure fair usage and prevent abuse:</p>
+                    
+                    <h3>Analytics & Map Endpoints</h3>
+                    <div class="info-box">
+                        <p><strong>Limit:</strong> 100 requests per 15 minutes per IP</p>
+                        <p style="margin-top: 0.5rem;"><strong>Applies to:</strong></p>
+                        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                            <li><code>/analytics/team</code></li>
+                            <li><code>/analytics/table</code></li>
+                            <li><code>/analytics/dates</code></li>
+                            <li><code>/map/data</code></li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Scraping Endpoints</h3>
+                    <div class="info-box warning">
+                        <p><strong>Limit:</strong> 10 requests per hour per IP</p>
+                        <p style="margin-top: 0.5rem;"><strong>Applies to:</strong></p>
+                        <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                            <li><code>/scrape-now</code></li>
+                            <li><code>/scrape-url</code></li>
+                        </ul>
+                        <p style="margin-top: 0.5rem;"><strong>Note:</strong> Scraping is automated every hour, so manual scraping should rarely be needed.</p>
+                    </div>
+                    
+                    <h3>Web Views</h3>
+                    <div class="info-box">
+                        <p><strong>Limit:</strong> 1000 requests per 15 minutes per IP</p>
+                        <p style="margin-top: 0.5rem;"><strong>Applies to:</strong> <code>/map</code>, <code>/analytics-view</code>, <code>/</code>, <code>/docs</code></p>
+                    </div>
+                    
+                    <h4>Rate Limit Headers</h4>
+                    <p>All responses include rate limit information in the headers:</p>
+                    <div class="code-block">
+                        <code>RateLimit-Limit: 100
+RateLimit-Remaining: 95
+RateLimit-Reset: 1638360000</code>
+                    </div>
+                    
+                    <h4>Rate Limit Exceeded Response</h4>
+                    <div class="code-block">
+                        <code>{
+  "error": "Too many requests from this IP, please try again later.",
+  "retryAfter": "15 minutes"
+}</code>
+                    </div>
+                    
+                    <h4>Best Practices</h4>
                     <ul style="margin-left: 1.5rem; color: #cbd5e1;">
-                        <li>Data updates hourly via automated cron jobs</li>
-                        <li>Avoid excessive manual scraping requests</li>
-                        <li>Cache responses when possible</li>
-                        <li>Consider using webhooks for real-time updates (coming soon)</li>
+                        <li>Cache API responses when possible</li>
+                        <li>Avoid polling - data updates hourly via cron</li>
+                        <li>Use webhooks when available (coming soon)</li>
+                        <li>Respect the <code>RateLimit-*</code> headers</li>
+                        <li>Implement exponential backoff if rate limited</li>
                     </ul>
                 </section>
 

@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 import { scrapeAndSaveData } from './scraper';
 import { getTeamAnalytics, getTableAnalytics, getAvailableDates } from './analytics';
 import { getMapData } from './map';
@@ -13,9 +14,53 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Rate limiting configurations
+// General API rate limit - 100 requests per 15 minutes per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Skip rate limiting for health check
+  skip: (req) => req.path === '/health'
+});
+
+// Stricter rate limit for scraping endpoints - 10 requests per hour per IP
+const scrapeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Limit each IP to 10 scrape requests per hour
+  message: {
+    error: 'Too many scrape requests from this IP, please try again later.',
+    retryAfter: '1 hour'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Very permissive rate limit for web views - 1000 requests per 15 minutes
+const webViewLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: {
+    error: 'Too many requests, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Apply rate limiters
+app.use('/analytics', apiLimiter);
+app.use('/map/data', apiLimiter);
+app.use('/scrape-now', scrapeLimiter);
+app.use('/scrape-url', scrapeLimiter);
 
 // Health check endpoint for Render
 app.get('/health', async (req: Request, res: Response) => {
