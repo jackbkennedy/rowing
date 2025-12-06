@@ -423,16 +423,20 @@ GET /map/data?sourceUrl=https://yb.tl/Simple/arc2025
 **What it provides:**
 - Complete position history for all boats
 - Organized by timestamp for time-slider functionality
+- **Intelligently filtered** to only include meaningful timestamps (where 50%+ of boats have data)
 - Speed comparisons between timestamps
 - Filtered to valid coordinates only
+
+**Smart Filtering:**
+The endpoint automatically filters out redundant scrapes. Since the scraper runs hourly but the YB Tracking website only updates every ~4 hours, many scrapes are duplicates. The filtering ensures the map time-slider only shows timestamps with meaningful data changes, not every hourly scrape.
 
 **Response:**
 ```json
 {
   "success": true,
   "timestamps": [
-    "2025-12-06T10:00:00.000Z",
-    "2025-12-06T09:00:00.000Z"
+    "2025-12-06T11:00:00.000Z",
+    "2025-12-06T10:00:00.000Z"
   ],
   "data": [
     {
@@ -456,7 +460,9 @@ GET /map/data?sourceUrl=https://yb.tl/Simple/arc2025
       ]
     }
   ],
-  "boatCount": 15
+  "boatCount": 15,
+  "totalTimestamps": 48,
+  "filteredTimestamps": 12
 }
 ```
 

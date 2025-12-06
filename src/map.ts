@@ -65,8 +65,25 @@ export async function getMapData(req: Request, res: Response) {
       new Date(b).getTime() - new Date(a).getTime()
     );
 
-    // Organize data by timestamp
-    const dataByTimestamp = sortedTimestamps.map(timestamp => {
+    // Filter timestamps to only include ones with meaningful data
+    // A timestamp is meaningful if it has at least 50% of boats with data
+    const totalBoats = boatsByName.size;
+    const minBoatsThreshold = Math.max(1, Math.floor(totalBoats * 0.5));
+    
+    const meaningfulTimestamps = sortedTimestamps.filter(timestamp => {
+      let boatsAtTimestamp = 0;
+      boatsByName.forEach((positions) => {
+        if (positions.some(p => p.scrapedAt === timestamp)) {
+          boatsAtTimestamp++;
+        }
+      });
+      return boatsAtTimestamp >= minBoatsThreshold;
+    });
+
+    console.log(`Filtered ${sortedTimestamps.length} timestamps to ${meaningfulTimestamps.length} meaningful ones (threshold: ${minBoatsThreshold}/${totalBoats} boats)`);
+
+    // Organize data by timestamp (using only meaningful timestamps)
+    const dataByTimestamp = meaningfulTimestamps.map(timestamp => {
       const boats: any[] = [];
       
       boatsByName.forEach((positions, boatName) => {
@@ -107,9 +124,11 @@ export async function getMapData(req: Request, res: Response) {
 
     res.json({
       success: true,
-      timestamps: sortedTimestamps,
+      timestamps: meaningfulTimestamps,
       data: dataByTimestamp,
-      boatCount: boatsByName.size
+      boatCount: boatsByName.size,
+      totalTimestamps: sortedTimestamps.length,
+      filteredTimestamps: meaningfulTimestamps.length
     });
   } catch (error) {
     console.error('Error getting map data:', error);
